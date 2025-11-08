@@ -35,7 +35,9 @@ classifiers = [
   "Operating System :: OS Independent",
 ]
 dependencies = [
-  # Runtime dependencies (keep empty for template)
+  "yt-dlp>=2024.10.0",
+  "requests>=2.31.0",
+  "python-dotenv>=1.0.0",
 ]
 
 [project.urls]

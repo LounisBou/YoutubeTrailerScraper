@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-""" Fixtures and configuration for pytest. """
+"""Fixtures and configuration for pytest."""
 import os
 import sys
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-""" Helper utilities for command-line interface. """
+"""Helper utilities for command-line interface."""
 
 from __future__ import annotations
 
@@ -59,6 +59,7 @@ def _supports_color(stream) -> bool:
     except (AttributeError, OSError):
         return False
 
+
 # Determine if color output is supported for stdout and stderr
 USE_COLOR_STDOUT = _supports_color(sys.stdout)
 USE_COLOR_STDERR = _supports_color(sys.stderr)
@@ -106,19 +107,21 @@ def parse_args() -> argparse.Namespace:
     """
 
     args_parser = argparse.ArgumentParser(
-        description="XTTS-v2 runner with Torch>=2.6 safe-globals auto-fix."
+        description=(
+            "YouTube Trailer Scraper - Download trailers for movies and TV shows from YouTube"
+        )
     )
-    args_parser.add_argument("--text", required=True, help="Text to synthesize")
-    args_parser.add_argument("--out", required=True, help="Output WAV/MP3 path")
+    # Verbose flag
     args_parser.add_argument(
-        "--speaker_wav", default=None, help="Reference WAV for zero-shot cloning"
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output",
     )
+    # Use SMB mount point
     args_parser.add_argument(
-        "--speaker", default=None, help="Built-in speaker name (for multi-speaker models)"
-    )
-    args_parser.add_argument("--lang", default="fr", help="Language code (e.g., fr, en)")
-    args_parser.add_argument(
-        "--device", default=None, choices=[None, "cpu", "mps"], help="Force device"
+        "--use-smb",
+        action="store_true",
+        help="Use SMB mount point for media directories",
     )
     return args_parser.parse_args()
 

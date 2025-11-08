@@ -11,11 +11,33 @@ ENV/
 env.bak/
 venv.bak/
 *.egg-info/
+*.egg
 dist/
 build/
+
+# Environment variables (CRITICAL - contains API keys)
+.env
+.env.*
+!.env.example
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
 # IDEs and editors
 .vscode/
 .idea/
 *.sublime-project
 *.sublime-workspace
+
+# OS-specific
+.DS_Store
+Thumbs.db

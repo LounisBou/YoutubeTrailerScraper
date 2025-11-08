@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-""" Module about information. """
+"""Module about information."""
 
 __package_name__ = "youtubetrailerscraper"
 __version__ = "0.1.0"

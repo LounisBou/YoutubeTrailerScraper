@@ -11,22 +11,18 @@ from ._about import (
     __url__,
     __version__,
 )
+from .moviescanner import MovieScanner
+from .tmdbsearchengine import TMDBSearchEngine
+from .tvshowscanner import TVShowScanner
+from .youtubedownloader import YoutubeDownloader
+from .youtubesearchengine import YoutubeSearchEngine
+from .youtubetrailerscraper import YoutubeTrailerScraper
 
-__all__ = ["YoutubeTrailerScraper"]
-
-
-def __getattr__(name: str):
-    """Lazily import heavy modules when needed.
-
-    Import of dependencies which may not yet be installed during package setup.
-    Deferring the import keeps the package lightweight at import time.
-
-    Example:
-        if name == "YoutubeTrailerScraper":
-            from .youtubetrailerscraper import YoutubeTrailerScraper
-
-            return YoutubeTrailerScraper
-    """
-
-    
-    raise AttributeError(name)
+__all__ = [
+    "YoutubeTrailerScraper",
+    "TMDBSearchEngine",
+    "YoutubeSearchEngine",
+    "YoutubeDownloader",
+    "MovieScanner",
+    "TVShowScanner",
+]

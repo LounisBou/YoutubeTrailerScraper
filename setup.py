@@ -23,7 +23,9 @@ about = {
 }
 
 readme = Path("README.md")
-long_description = readme.read_text(encoding="utf-8") if readme.exists() else about["__description__"]
+long_description = (
+    readme.read_text(encoding="utf-8") if readme.exists() else about["__description__"]
+)
 
 setup(
     name=about["__package_name__"],
@@ -47,14 +49,12 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
-        
         "License :: OSI Approved :: Apache Software License",
-        
     ],
     keywords="python template package",
     python_requires=">=3.9",
     install_requires=[
-       # Runtime dependencies
+        # Runtime dependencies
     ],
     extras_require={
         "dev": [

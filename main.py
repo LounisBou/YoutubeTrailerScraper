@@ -5,10 +5,11 @@ Command-line interface for YoutubeTrailerScraper.
 
 CLI:
   python main.py [options]
-    
+
 """
 from __future__ import annotations
 import sys
+import traceback
 
 from commandlinehelper import (
     ERROR,
@@ -20,6 +21,9 @@ from commandlinehelper import (
     print_message,
     set_default_args_values,
 )
+
+from src.youtubetrailerscraper import YoutubeTrailerScraper
+
 
 def _main() -> int:
     """
@@ -53,9 +57,46 @@ def _main() -> int:
         print_message(f"Argument error: {e}", ERROR)
         sys.exit(2)
 
-    # Main functionality placeholder
-    print_message("This is a placeholder for the main functionality.", SUCCESS)
+    try:
+        # Instantiate the scraper (loads .env file)
+        if args.verbose:
+            print_message("Loading configuration from .env file...", INFO)
+
+        scraper = YoutubeTrailerScraper()
+
+        if args.verbose:
+            print_message(
+                f"Configuration loaded successfully:\n"
+                f"  - TMDB API configured: {bool(scraper.tmdb_api_key)}\n"
+                f"  - Movies paths: {len(scraper.movies_paths)}\n"
+                f"  - TV shows paths: {len(scraper.tvshows_paths)}\n"
+                f"  - SMB mount: {scraper.smb_mount_point or 'Not configured'}",
+                INFO,
+            )
+
+        # pylint: disable=fixme
+        # TODO: Implement workflow
+        # 1. Scan for movies/TV shows without trailers
+        # 2. Search TMDB for trailers
+        # 3. Fallback to YouTube search if needed
+        # 4. Download trailers
+
+        print_message("YoutubeTrailerScraper executed successfully.", SUCCESS)
+
+    except FileNotFoundError as e:
+        print_message(f"Configuration error: {e}", ERROR)
+        sys.exit(2)
+    except ValueError as e:
+        print_message(f"Configuration error: {e}", ERROR)
+        sys.exit(2)
+    except Exception as e:  # pylint: disable=broad-except
+        print_message(f"An error occurred: {e}", ERROR)
+        if args.verbose:
+            traceback.print_exc()
+        sys.exit(1)
+
     sys.exit(0)
+
 
 if __name__ == "__main__":
     raise SystemExit(_main())

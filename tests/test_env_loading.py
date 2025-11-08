@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Tests for environment variable loading in YoutubeTrailerScraper."""
+
+import os
+import tempfile
+from pathlib import Path
+
+import pytest
+
+from youtubetrailerscraper import YoutubeTrailerScraper  # pylint: disable=import-error
+
+
+def test_env_loading_with_valid_file():
+    """Test that environment variables are loaded correctly from .env file."""
+    # Create a temporary .env file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write("TMDB_API_BASE_URL=https://api.themoviedb.org/3\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+
+        assert scraper.tmdb_api_key == "test_api_key"
+        assert scraper.tmdb_read_access_token == "test_token"
+        assert scraper.tmdb_api_base_url == "https://api.themoviedb.org/3"
+        assert len(scraper.movies_paths) == 1
+        assert scraper.movies_paths[0] == Path("/path/to/movies/")
+        assert len(scraper.tvshows_paths) == 1
+        assert scraper.tvshows_paths[0] == Path("/path/to/tvshows/")
+    finally:
+        os.unlink(env_file)
+
+
+def test_env_loading_missing_required_variable():
+    """Test that ValueError is raised when required variable is missing."""
+    # Create a temporary .env file without TMDB_API_KEY
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        env_file = f.name
+
+    try:
+        # Clear environment variable if it exists
+        old_value = os.environ.pop("TMDB_API_KEY", None)
+        try:
+            with pytest.raises(ValueError, match="TMDB_API_KEY"):
+                YoutubeTrailerScraper(env_file=env_file)
+        finally:
+            # Restore old value
+            if old_value is not None:
+                os.environ["TMDB_API_KEY"] = old_value
+    finally:
+        os.unlink(env_file)
+
+
+def test_env_loading_with_defaults():
+    """Test that default values are used when optional variables are missing."""
+    # Create a temporary .env file with only required variables
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+
+        # Check defaults
+        assert scraper.tmdb_api_base_url == "https://api.themoviedb.org/3"
+        assert scraper.youtube_search_url == "https://www.youtube.com/results?search_query={query}"
+        assert scraper.default_search_query_format == "{title} {year} bande annonce"
+        assert scraper.smb_mount_point == ""
+    finally:
+        os.unlink(env_file)
+
+
+def test_env_loading_invalid_path_list():
+    """Test that ValueError is raised for invalid path list format."""
+    # Create a temporary .env file with invalid path list
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write("MOVIES_PATHS=not_a_list\n")
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        env_file = f.name
+
+    try:
+        with pytest.raises(ValueError, match="Invalid path list format"):
+            YoutubeTrailerScraper(env_file=env_file)
+    finally:
+        os.unlink(env_file)
+
+
+def test_env_loading_missing_file():
+    """Test that FileNotFoundError is raised when .env file doesn't exist."""
+    with pytest.raises(FileNotFoundError, match="Environment file not found"):
+        YoutubeTrailerScraper(env_file="nonexistent.env")
