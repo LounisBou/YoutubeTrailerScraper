@@ -25,8 +25,24 @@ import logging
 from pathlib import Path
 from typing import List
 
+from cachetools import TTLCache
+from cachetools.keys import hashkey
+
 
 logger = logging.getLogger(__name__)
+
+
+def _path_list_key(self, paths: List[Path]) -> tuple:  # pylint: disable=unused-argument
+    """Create a hashable cache key from a list of Path objects.
+
+    Args:
+        self: Instance reference (unused, for method signature compatibility).
+        paths: List of Path objects to convert into a cache key.
+
+    Returns:
+        Tuple of path strings suitable for use as a cache key.
+    """
+    return hashkey(tuple(str(p) for p in paths))
 
 
 class MovieScanner:
@@ -47,6 +63,10 @@ class MovieScanner:
 
     Attributes:
         trailer_pattern: The glob pattern used to detect trailer files (default: "*-trailer.mp4")
+
+    Note:
+        Both scan() and find_missing_trailers() methods use a 24-hour TTL cache to avoid
+        redundant filesystem scans. The cache automatically expires after 24 hours.
     """
 
     def __init__(self, trailer_pattern: str = "*-trailer.mp4"):
@@ -56,6 +76,9 @@ class MovieScanner:
             trailer_pattern: Glob pattern to match trailer files. Defaults to "*-trailer.mp4".
         """
         self.trailer_pattern = trailer_pattern
+        # Cache with 24-hour TTL (86400 seconds), max 100 entries
+        self._scan_cache = TTLCache(maxsize=100, ttl=86400)
+        self._missing_trailers_cache = TTLCache(maxsize=100, ttl=86400)
         logger.debug("MovieScanner initialized with pattern: %s", trailer_pattern)
 
     def scan(self, paths: List[Path]) -> List[Path]:
@@ -64,6 +87,9 @@ class MovieScanner:
         Recursively scans the provided paths to find all movie directories.
         A directory is considered a movie directory if it contains video files
         (files with video extensions like .mp4, .mkv, .avi).
+
+        Note:
+            Results are cached with a 24-hour TTL to improve performance on repeated scans.
 
         Args:
             paths: List of directory paths to scan for movies. Can be Path objects or strings.
@@ -76,6 +102,12 @@ class MovieScanner:
         """
         if not paths:
             raise ValueError("Paths list cannot be empty")
+
+        # Check cache
+        cache_key = _path_list_key(self, paths)
+        if cache_key in self._scan_cache:
+            logger.debug("Cache hit for scan()")
+            return self._scan_cache[cache_key]
 
         movie_dirs = []
         video_extensions = {".mp4", ".mkv", ".avi", ".m4v", ".mov"}
@@ -112,6 +144,8 @@ class MovieScanner:
                 logger.error("Error scanning %s: %s", base_path, e)
 
         logger.info("Found %d movie directories", len(movie_dirs))
+        # Store in cache
+        self._scan_cache[cache_key] = movie_dirs
         return movie_dirs
 
     def find_missing_trailers(self, paths: List[Path]) -> List[Path]:
@@ -119,6 +153,9 @@ class MovieScanner:
 
         Scans the provided paths for movie directories and identifies which ones
         do not contain a trailer file matching the trailer_pattern.
+
+        Note:
+            Results are cached with a 24-hour TTL to improve performance on repeated scans.
 
         Args:
             paths: List of directory paths to scan for movies with missing trailers.
@@ -136,6 +173,12 @@ class MovieScanner:
         """
         if not paths:
             raise ValueError("Paths list cannot be empty")
+
+        # Check cache
+        cache_key = _path_list_key(self, paths)
+        if cache_key in self._missing_trailers_cache:
+            logger.debug("Cache hit for find_missing_trailers()")
+            return self._missing_trailers_cache[cache_key]
 
         # First, find all movie directories
         movie_dirs = self.scan(paths)
@@ -157,4 +200,6 @@ class MovieScanner:
             len(missing_trailers),
             len(movie_dirs),
         )
+        # Store in cache
+        self._missing_trailers_cache[cache_key] = missing_trailers
         return missing_trailers
