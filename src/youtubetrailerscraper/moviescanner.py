@@ -21,13 +21,13 @@ Example:
 """
 
 from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import List
 
 from cachetools import TTLCache
 from cachetools.keys import hashkey
-
 
 logger = logging.getLogger(__name__)
 

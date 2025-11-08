@@ -8,6 +8,7 @@ CLI:
 
 """
 from __future__ import annotations
+
 import sys
 import traceback
 
@@ -22,7 +23,6 @@ from commandlinehelper import (
     print_message,
     set_default_args_values,
 )
-
 from src.youtubetrailerscraper import YoutubeTrailerScraper
 
 
