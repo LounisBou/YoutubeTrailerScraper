@@ -31,16 +31,21 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
+from youtubetrailerscraper.moviescanner import MovieScanner
+from youtubetrailerscraper.tvshowscanner import TVShowScanner
+
 
 class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
     """Scan tvshows and movies folders, download trailer on youtube"""
 
-    def __init__(self, env_file: Optional[str] = None):
+    def __init__(self, env_file: Optional[str] = None, use_smb: bool = False):
         """
         Initialize YoutubeTrailerScraper
 
         Parameters:
             env_file (str, optional): Path to .env file. Defaults to .env in current directory.
+            use_smb (bool): Whether to use SMB mount point as prefix for paths. Can be
+                overridden by USE_SMB_MOUNT environment variable. Defaults to False.
         """
         # Configuration attributes
         self.tmdb_api_key: str = ""
@@ -49,6 +54,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         self.movies_paths: list[Path] = []
         self.tvshows_paths: list[Path] = []
         self.smb_mount_point: str = ""
+        self.use_smb_mount: bool = use_smb
         self.youtube_search_url: str = ""
         self.default_search_query_format: str = ""
 
@@ -84,14 +90,28 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             "TMDB_API_BASE_URL", default="https://api.themoviedb.org/3"
         )
 
+        # Load SMB mount configuration
+        self.smb_mount_point = self._get_env_var("SMB_MOUNT_POINT", default="")
+        use_smb_env = self._get_env_var("USE_SMB_MOUNT", default="false").lower() == "true"
+        # Environment variable overrides constructor parameter
+        if use_smb_env:
+            self.use_smb_mount = True
+
         # Load media paths
-        self.movies_paths = self._parse_path_list(self._get_env_var("MOVIES_PATHS", required=True))
-        self.tvshows_paths = self._parse_path_list(
+        movies_paths_raw = self._parse_path_list(self._get_env_var("MOVIES_PATHS", required=True))
+        tvshows_paths_raw = self._parse_path_list(
             self._get_env_var("TVSHOWS_PATHS", required=True)
         )
 
+        # Apply SMB mount point prefix if enabled
+        if self.use_smb_mount and self.smb_mount_point:
+            self.movies_paths = self._apply_smb_prefix(movies_paths_raw)
+            self.tvshows_paths = self._apply_smb_prefix(tvshows_paths_raw)
+        else:
+            self.movies_paths = movies_paths_raw
+            self.tvshows_paths = tvshows_paths_raw
+
         # Load optional configurations
-        self.smb_mount_point = self._get_env_var("SMB_MOUNT_POINT", default="")
         self.youtube_search_url = self._get_env_var(
             "YOUTUBE_SEARCH_URL",
             default="https://www.youtube.com/results?search_query={query}",
@@ -148,43 +168,82 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
                 f"Expected Python list format, e.g., ['/path1/', '/path2/']. Error: {e}"
             ) from e
 
-    def scan_for_movies_without_trailers(
-        self, path: Path  # pylint: disable=unused-argument
-    ) -> list[Path]:
-        """
-        Scan for movies without trailers in the given path
+    def _apply_smb_prefix(self, paths: list[Path]) -> list[Path]:
+        """Apply SMB mount point as prefix to all paths.
 
-        Parameters:
-            path (Path): Path to scan for movies without trailers
+        The SMB mount point should be a local filesystem mount path (e.g., /Volumes/MediaServer).
+        This method prepends the mount point to each path.
+
+        Args:
+            paths: List of Path objects to prefix.
+
         Returns:
-            list[Path]: List of movies without trailers
-        """
-        # pylint: disable=fixme
-        # TODO: Implement in Step 3
-        # Retrieve movies folders from environment variable
-        # For each movies folders
-        # Check if movies folder exists
-        # Scan for movies without trailers in the folder
-        return []
+            List of Path objects with SMB mount point prepended.
 
-    def scan_for_tvshows_without_trailers(
-        self, path: Path  # pylint: disable=unused-argument
-    ) -> list[Path]:
+        Example:
+            >>> paths = [Path("/Volumes/Disk1/medias/movies")]
+            >>> smb_mount = "/Volumes/MediaServer"
+            >>> prefixed = self._apply_smb_prefix(paths)
+            >>> # Result: [Path("/Volumes/MediaServer/Volumes/Disk1/medias/movies")]
         """
-        Scan for tvshows without trailers in the given path
+        prefixed_paths = []
+        smb_prefix = Path(self.smb_mount_point)
 
-        Parameters:
-            path (Path): Path to scan for tvshows without trailers
+        for path in paths:
+            # Remove leading slash to avoid double slashes when joining
+            path_str = str(path).lstrip("/")
+            prefixed_path = smb_prefix / path_str
+            prefixed_paths.append(prefixed_path)
+
+        return prefixed_paths
+
+    def scan_for_movies_without_trailers(self) -> list[Path]:
+        """Scan for movies without trailers across all configured movie directories.
+
+        Uses the MovieScanner class to scan all directories specified in the
+        MOVIES_PATHS environment variable. Returns a list of movie directories
+        that are missing trailer files.
+
         Returns:
-            list[Path]: List of tvshows without trailers
+            List of Path objects representing movie directories without trailers.
+            Returns empty list if no movies are missing trailers or if movies_paths is empty.
+
+        Example:
+            >>> scraper = YoutubeTrailerScraper()
+            >>> missing = scraper.scan_for_movies_without_trailers()
+            >>> print(f"Found {len(missing)} movies without trailers")
         """
-        # pylint: disable=fixme
-        # TODO: Implement in Step 3
-        # Retrieve tvshows folders from environment variable
-        # For each tvshows folders
-        # Check if tvshows folder exists
-        # Scan for tvshows without trailers in the folder
-        return []
+        if not self.movies_paths:
+            return []
+
+        scanner = MovieScanner()
+        return scanner.find_missing_trailers(self.movies_paths)
+
+    def scan_for_tvshows_without_trailers(self) -> list[Path]:
+        """Scan for TV shows without trailers across all configured TV show directories.
+
+        Uses the TVShowScanner class to scan all directories specified in the
+        TVSHOWS_PATHS environment variable. Returns a list of TV show directories
+        that are missing trailer files.
+
+        Note:
+            TVShowScanner is currently a skeleton implementation and will return
+            an empty list until fully implemented in a future step.
+
+        Returns:
+            List of Path objects representing TV show directories without trailers.
+            Returns empty list if no TV shows are missing trailers or if tvshows_paths is empty.
+
+        Example:
+            >>> scraper = YoutubeTrailerScraper()
+            >>> missing = scraper.scan_for_tvshows_without_trailers()
+            >>> print(f"Found {len(missing)} TV shows without trailers")
+        """
+        if not self.tvshows_paths:
+            return []
+
+        scanner = TVShowScanner()
+        return scanner.find_missing_trailers(self.tvshows_paths)
 
     def search_for_movie_trailer(
         self,

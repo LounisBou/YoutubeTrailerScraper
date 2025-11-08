@@ -25,5 +25,11 @@ def test_cli_runs_default() -> None:
     """Test that CLI runs successfully with default arguments."""
     cp = run_cli()
     assert cp.returncode == 0
-    # Check for successful execution message
-    assert "successfully" in cp.stdout.lower()
+    # Check for scan results output
+    assert "movies without trailers" in cp.stdout.lower()
+    assert (
+        "tv shows without trailers" in cp.stdout.lower()
+        or "tv without trailers" in cp.stdout.lower()
+    )
+    # Should show completion message (either all have trailers or scan complete)
+    assert "trailers" in cp.stdout.lower()
