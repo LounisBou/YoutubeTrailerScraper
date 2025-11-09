@@ -248,4 +248,3 @@ def test_scan_sample_size_invalid():
         assert scraper.scan_sample_size is None
     finally:
         os.unlink(env_file)
-    """Test scan_for_movies_without_trailers with empty movies_paths."""

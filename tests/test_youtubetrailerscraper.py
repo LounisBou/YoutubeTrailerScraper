@@ -5,8 +5,6 @@
 import os
 import tempfile
 
-import pytest
-
 from youtubetrailerscraper import YoutubeTrailerScraper  # pylint: disable=import-error
 
 

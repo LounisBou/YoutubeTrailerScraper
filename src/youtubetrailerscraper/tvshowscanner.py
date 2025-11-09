@@ -152,16 +152,12 @@ class TVShowScanner:
                 if subdir_lower.startswith(self.season_pattern):
                     has_matching_subdir = True
                     has_videos = self._has_video_files(subdir)
-                    logger.debug(
-                        "Season dir '%s' has video files: %s", subdir.name, has_videos
-                    )
+                    logger.debug("Season dir '%s' has video files: %s", subdir.name, has_videos)
                     if has_videos:
                         return True
 
             if has_matching_subdir:
-                logger.debug(
-                    "Directory '%s' has season dirs but no videos", directory.name
-                )
+                logger.debug("Directory '%s' has season dirs but no videos", directory.name)
             else:
                 logger.debug(
                     "Directory '%s' has no subdirs matching pattern '%s'",
