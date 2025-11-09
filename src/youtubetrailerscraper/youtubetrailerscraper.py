@@ -32,6 +32,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
+from youtubetrailerscraper.filesystemscanner import FileSystemScanner
 from youtubetrailerscraper.moviescanner import MovieScanner
 from youtubetrailerscraper.tvshowscanner import TVShowScanner
 
@@ -308,3 +309,17 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         # TODO: Implement in Step 4/5
         # Create search query
         return []
+
+    def clear_cache(self) -> None:
+        """Clear the filesystem scan cache.
+
+        This removes all cached scan results, forcing a fresh scan
+        on the next execution. Useful when media libraries have been
+        updated and you want to bypass the cache.
+
+        The cache is stored in .cache/filesystemscanner/ directory.
+        """
+        self.logger.info("Clearing filesystem scan cache...")
+        scanner = FileSystemScanner()
+        scanner.clear_cache()
+        self.logger.info("Cache cleared successfully")

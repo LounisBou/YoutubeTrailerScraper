@@ -15,7 +15,7 @@ class TestFileSystemScannerInit:
         scanner = FileSystemScanner()
         assert scanner.video_extensions == {".mp4", ".mkv", ".avi", ".m4v", ".mov"}
         assert scanner.cache_ttl == 86400  # 24 hours
-        assert scanner.cache_maxsize == 100
+        assert scanner.cache_dir == ".cache/filesystemscanner"
 
     def test_custom_video_extensions(self):
         """Test FileSystemScanner with custom video extensions."""
@@ -25,9 +25,9 @@ class TestFileSystemScannerInit:
 
     def test_custom_cache_settings(self):
         """Test FileSystemScanner with custom cache settings."""
-        scanner = FileSystemScanner(cache_ttl=3600, cache_maxsize=50)
+        scanner = FileSystemScanner(cache_ttl=3600, cache_dir=".cache/test")
         assert scanner.cache_ttl == 3600
-        assert scanner.cache_maxsize == 50
+        assert scanner.cache_dir == ".cache/test"
 
 
 class TestFileSystemScannerValidatePath:

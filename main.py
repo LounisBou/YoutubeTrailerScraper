@@ -173,6 +173,12 @@ def _main() -> int:
         # Load scraper configuration
         scraper, _ = _load_scraper(args.verbose, args.use_smb)
 
+        # Clear cache if requested
+        if args.clear_cache:
+            print_message("Clearing filesystem scan cache...", INFO)
+            scraper.clear_cache()
+            print_message("Cache cleared successfully.", SUCCESS)
+
         # Scan for missing trailers
         movies_without_trailers, tvshows_without_trailers = _scan_for_missing_trailers(scraper)
 

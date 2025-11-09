@@ -28,16 +28,16 @@ Example:
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Callable, List, Optional, Set
 
-from cachetools import TTLCache
-from cachetools.keys import hashkey
+from diskcache import Cache
 
 logger = logging.getLogger(__name__)
 
 
-def _create_cache_key(paths: List[Path], filter_name: str) -> tuple:
+def _create_cache_key(paths: List[Path], filter_name: str) -> str:
     """Create a hashable cache key from paths and filter function name.
 
     Args:
@@ -45,33 +45,36 @@ def _create_cache_key(paths: List[Path], filter_name: str) -> tuple:
         filter_name: Name of the filter function being applied.
 
     Returns:
-        Tuple suitable for use as a cache key.
+        String suitable for use as a cache key.
     """
-    return hashkey(tuple(str(p) for p in paths), filter_name)
+    # Create a stable string key from paths and filter name
+    paths_str = "|".join(sorted(str(p) for p in paths))
+    return f"{filter_name}::{paths_str}"
 
 
 class FileSystemScanner:
-    """Generic filesystem scanner with caching and error handling.
+    """Generic filesystem scanner with persistent disk-based caching.
 
     This service class provides reusable filesystem scanning functionality
-    with built-in caching, error handling, and logging. It's designed to be
-    used by specialized scanner classes through dependency injection.
+    with built-in persistent caching, error handling, and logging. It's designed
+    to be used by specialized scanner classes through dependency injection.
 
     Attributes:
         video_extensions: Set of video file extensions to recognize.
         cache_ttl: Time-to-live for cache entries in seconds (default: 86400 = 24 hours).
-        cache_maxsize: Maximum number of cache entries (default: 100).
+        cache_dir: Directory path for cache storage (default: .cache/filesystemscanner).
 
     Note:
-        All scan operations use a TTL cache to avoid redundant filesystem scans.
-        The cache automatically expires after the specified TTL period.
+        All scan operations use a persistent disk cache to avoid redundant filesystem scans.
+        The cache automatically expires after the specified TTL period and persists between
+        program executions.
     """
 
     def __init__(
         self,
         video_extensions: Optional[Set[str]] = None,
         cache_ttl: int = 86400,
-        cache_maxsize: int = 100,
+        cache_dir: Optional[str] = None,
     ):
         """Initialize FileSystemScanner with configuration options.
 
@@ -79,16 +82,19 @@ class FileSystemScanner:
             video_extensions: Set of video file extensions (with dots).
                 Defaults to {".mp4", ".mkv", ".avi", ".m4v", ".mov"}.
             cache_ttl: Cache time-to-live in seconds. Defaults to 86400 (24 hours).
-            cache_maxsize: Maximum cache entries. Defaults to 100.
+            cache_dir: Directory for cache storage. Defaults to .cache/filesystemscanner.
         """
         self.video_extensions = video_extensions or {".mp4", ".mkv", ".avi", ".m4v", ".mov"}
         self.cache_ttl = cache_ttl
-        self.cache_maxsize = cache_maxsize
-        self._scan_cache = TTLCache(maxsize=cache_maxsize, ttl=cache_ttl)
+        self.cache_dir = cache_dir or ".cache/filesystemscanner"
+
+        # Initialize persistent disk cache
+        self._scan_cache = Cache(self.cache_dir)
+
         logger.debug(
-            "FileSystemScanner initialized (TTL: %ds, maxsize: %d, extensions: %s)",
+            "FileSystemScanner initialized (TTL: %ds, cache_dir: %s, extensions: %s)",
             cache_ttl,
-            cache_maxsize,
+            self.cache_dir,
             self.video_extensions,
         )
 
@@ -182,11 +188,19 @@ class FileSystemScanner:
         if not paths:
             raise ValueError("Paths list cannot be empty")
 
-        # Check cache
+        # Check cache with TTL
         cache_key = _create_cache_key(paths, filter_name)
-        if cache_key in self._scan_cache:
-            logger.debug("Cache hit for scan_directories(%s)", filter_name)
-            return self._scan_cache[cache_key]
+        cached_result = self._scan_cache.get(cache_key)
+
+        if cached_result is not None:
+            # Check if cached result has expired
+            cached_data, cached_time = cached_result
+            if time.time() - cached_time < self.cache_ttl:
+                logger.debug("Cache hit for scan_directories(%s)", filter_name)
+                return cached_data
+            logger.debug("Cache expired for scan_directories(%s)", filter_name)
+            # Remove expired entry
+            self._scan_cache.delete(cache_key)
 
         matching_dirs = []
 
@@ -214,8 +228,10 @@ class FileSystemScanner:
 
         logger.info("Found %d matching directories", len(matching_dirs))
 
-        # Store in cache
-        self._scan_cache[cache_key] = matching_dirs
+        # Store in cache with timestamp for TTL management
+        self._scan_cache.set(cache_key, (matching_dirs, time.time()))
+        logger.debug("Cached scan results for %s", filter_name)
+
         return matching_dirs
 
     def clear_cache(self) -> None:
