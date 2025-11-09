@@ -170,7 +170,7 @@ class TestTVShowScannerFindMissingTrailers:
         (season1 / "episode1.mp4").write_text("fake video")
         trailers_dir = tvshow1 / "trailers"
         trailers_dir.mkdir()
-        (trailers_dir / "trailer.mp4").write_text("fake trailer")
+        (trailers_dir / "breaking-bad-trailer.mp4").write_text("fake trailer")  # Contains -trailer
 
         # TV show without trailer
         tvshow2 = tmp_path / "The Wire"
@@ -229,7 +229,7 @@ class TestTVShowScannerFindMissingTrailers:
             (season1 / "episode1.mp4").write_text("fake video")
             trailers_dir = tvshow / "trailers"
             trailers_dir.mkdir()
-            (trailers_dir / "trailer.mp4").write_text("fake trailer")
+            (trailers_dir / f"show{i}-trailer.mp4").write_text("fake trailer")  # Contains -trailer
 
         results = scanner.find_missing_trailers([tmp_path])
         assert len(results) == 0
@@ -249,10 +249,10 @@ class TestTVShowScannerFindMissingTrailers:
         assert len(results) == 3
 
     def test_custom_trailer_path(self, tmp_path):
-        """Test using custom trailer subdirectory and filename."""
+        """Test using custom trailer subdirectory with flexible trailer detection."""
         scanner = TVShowScanner(trailer_subdir="videos", trailer_filename="preview.mp4")
 
-        # TV show with custom trailer location
+        # TV show with custom trailer location (must contain -trailer in filename)
         tvshow1 = tmp_path / "Show1"
         tvshow1.mkdir()
         season1 = tvshow1 / "Season 01"
@@ -260,7 +260,7 @@ class TestTVShowScannerFindMissingTrailers:
         (season1 / "episode1.mp4").write_text("fake video")
         videos_dir = tvshow1 / "videos"
         videos_dir.mkdir()
-        (videos_dir / "preview.mp4").write_text("fake trailer")
+        (videos_dir / "show1-trailer.mp4").write_text("fake trailer")  # Contains -trailer
 
         # TV show without custom trailer
         tvshow2 = tmp_path / "Show2"
@@ -280,6 +280,260 @@ class TestTVShowScannerFindMissingTrailers:
         nonexistent = tmp_path / "does_not_exist"
         results = scanner.find_missing_trailers([nonexistent])
         assert not results
+
+    def test_flexible_trailer_detection_various_extensions(self, tmp_path):
+        """Test that trailers with various extensions are detected."""
+        scanner = TVShowScanner()
+
+        # Create TV shows with trailers using different extensions
+        tvshow1 = tmp_path / "Show 1"
+        tvshow1.mkdir()
+        season1 = tvshow1 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow1 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "show-trailer.mkv").write_text("fake trailer")  # Different extension
+
+        tvshow2 = tmp_path / "Show 2"
+        tvshow2.mkdir()
+        season1 = tvshow2 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow2 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "show-trailer.avi").write_text("fake trailer")  # Different extension
+
+        missing = scanner.find_missing_trailers([tmp_path])
+        assert len(missing) == 0  # All have trailers despite different extensions
+
+    def test_flexible_trailer_detection_case_insensitive(self, tmp_path):
+        """Test that trailer detection is case-insensitive."""
+        scanner = TVShowScanner()
+
+        # Create TV shows with trailers using different case patterns
+        tvshow1 = tmp_path / "Show 1"
+        tvshow1.mkdir()
+        season1 = tvshow1 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow1 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "SHOW-TRAILER.mp4").write_text("fake trailer")  # Uppercase
+
+        tvshow2 = tmp_path / "Show 2"
+        tvshow2.mkdir()
+        season1 = tvshow2 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow2 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "Show-Trailer.mp4").write_text("fake trailer")  # Mixed case
+
+        missing = scanner.find_missing_trailers([tmp_path])
+        assert len(missing) == 0  # All have trailers despite different case
+
+    def test_flexible_trailer_detection_various_naming_patterns(self, tmp_path):
+        """Test that various naming patterns with '-trailer' are detected."""
+        scanner = TVShowScanner()
+
+        # Create TV shows with trailers using different naming patterns
+        tvshow1 = tmp_path / "Show 1"
+        tvshow1.mkdir()
+        season1 = tvshow1 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow1 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "official-trailer.mp4").write_text("fake trailer")
+
+        tvshow2 = tmp_path / "Show 2"
+        tvshow2.mkdir()
+        season1 = tvshow2 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow2 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "show-trailer-1080p.mp4").write_text("fake trailer")
+
+        missing = scanner.find_missing_trailers([tmp_path])
+        assert len(missing) == 0  # All have trailers with '-trailer' in name
+
+    def test_flexible_trailer_detection_without_trailer_keyword(self, tmp_path):
+        """Test that files without 'trailer' keyword are not considered trailers."""
+        scanner = TVShowScanner()
+
+        # Create TV shows with extra files but no actual trailer
+        tvshow1 = tmp_path / "Show 1"
+        tvshow1.mkdir()
+        season1 = tvshow1 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow1 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "show-preview.mp4").write_text("fake preview")  # Not a trailer
+
+        missing = scanner.find_missing_trailers([tmp_path])
+        assert len(missing) == 1  # Should be missing trailer
+
+    def test_flexible_trailer_detection_without_dash(self, tmp_path):
+        """Test that trailers without dash separator are also detected."""
+        scanner = TVShowScanner()
+
+        # Create TV shows with trailers without dash
+        tvshow1 = tmp_path / "Show 1"
+        tvshow1.mkdir()
+        season1 = tvshow1 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow1 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "ShowTrailer.mp4").write_text("fake trailer")  # No dash
+
+        tvshow2 = tmp_path / "Show 2"
+        tvshow2.mkdir()
+        season1 = tvshow2 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow2 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "Show Trailer.mkv").write_text("fake trailer")  # Space
+
+        tvshow3 = tmp_path / "Show 3"
+        tvshow3.mkdir()
+        season1 = tvshow3 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow3 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "trailer.mp4").write_text("fake trailer")  # Just "trailer"
+
+        missing = scanner.find_missing_trailers([tmp_path])
+        assert len(missing) == 0  # All have trailers despite no dash
+
+
+class TestTVShowScannerHasTrailer:
+    """Test TVShowScanner.has_trailer() method."""
+
+    def test_has_trailer_true_with_standard_naming(self, tmp_path):
+        """Test has_trailer returns True for standard trailer naming."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "show-trailer.mp4").write_text("fake trailer")
+
+        assert scanner.has_trailer(tvshow_dir) is True
+
+    def test_has_trailer_true_case_insensitive(self, tmp_path):
+        """Test has_trailer returns True for case-insensitive trailer names."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "SHOW-TRAILER.mp4").write_text("fake trailer")
+
+        assert scanner.has_trailer(tvshow_dir) is True
+
+    def test_has_trailer_true_various_extensions(self, tmp_path):
+        """Test has_trailer returns True for trailers with various extensions."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "show-trailer.mkv").write_text("fake trailer")
+
+        assert scanner.has_trailer(tvshow_dir) is True
+
+    def test_has_trailer_false_no_trailers_dir(self, tmp_path):
+        """Test has_trailer returns False when trailers directory doesn't exist."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+
+        assert scanner.has_trailer(tvshow_dir) is False
+
+    def test_has_trailer_false_no_trailer_files(self, tmp_path):
+        """Test has_trailer returns False when trailers dir exists but no trailer files."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+
+        assert scanner.has_trailer(tvshow_dir) is False
+
+    def test_has_trailer_false_without_trailer_keyword(self, tmp_path):
+        """Test has_trailer returns False for files without 'trailer' keyword."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "show-preview.mp4").write_text("fake preview")
+
+        assert scanner.has_trailer(tvshow_dir) is False
+
+    def test_has_trailer_true_without_dash(self, tmp_path):
+        """Test has_trailer returns True for trailers without dash separator."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "ShowTrailer.mp4").write_text("fake trailer")
+
+        assert scanner.has_trailer(tvshow_dir) is True
+
+    def test_has_trailer_true_just_trailer(self, tmp_path):
+        """Test has_trailer returns True for file named just 'trailer'."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "trailer.mp4").write_text("fake trailer")
+
+        assert scanner.has_trailer(tvshow_dir) is True
+
+    def test_has_trailer_handles_permission_error(self, tmp_path):
+        """Test has_trailer handles permission errors gracefully."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+
+        # Mock iterdir to raise PermissionError using Path class
+        with patch("pathlib.Path.iterdir", side_effect=PermissionError("Access denied")):
+            assert scanner.has_trailer(tvshow_dir) is False
 
 
 class TestTVShowScannerIsTvShowDirectory:

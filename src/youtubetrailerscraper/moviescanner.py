@@ -3,8 +3,8 @@
 """MovieScanner module for scanning movie directories and detecting missing trailers.
 
 This module provides the MovieScanner class which scans Plex movie directories
-to identify movies that are missing trailer files. Trailers are expected to follow
-the naming pattern: <movie-name>-trailer.mp4
+to identify movies that are missing trailer files. Trailers are detected as any file
+containing 'trailer' in the filename (case-insensitive), regardless of file extension
 
 Example:
     Basic usage of MovieScanner:
@@ -36,19 +36,24 @@ class MovieScanner:
 
     This class scans Plex movie directory structures to identify which movies
     are missing trailer files. Each movie is expected to be in its own directory,
-    and trailers should be named with the pattern: *-trailer.mp4
+    and trailers are detected as any file containing 'trailer' in the filename
+    (case-insensitive), regardless of file extension.
 
     Example directory structure:
         /movies/
             The Matrix (1999)/
                 The Matrix (1999).mp4
                 The Matrix (1999)-trailer.mp4  # Trailer present
+                The Matrix Trailer.mkv         # Also detected as trailer
+                MatrixTrailer.avi              # Also detected as trailer
             Inception (2010)/
                 Inception (2010).mp4
                 # No trailer - this will be detected
 
     Attributes:
-        trailer_pattern: The glob pattern used to detect trailer files (default: "*-trailer.mp4")
+        trailer_pattern: The glob pattern used for backward compatibility
+                        (default: "*-trailer.mp4"). Note: Actual detection now uses
+                        flexible pattern matching.
         fs_scanner: FileSystemScanner instance for filesystem operations (injected dependency)
 
     Note:
@@ -101,13 +106,41 @@ class MovieScanner:
             max_results=max_results,
         )
 
+    def has_trailer(self, movie_dir: Path) -> bool:
+        """Check if a movie directory contains any trailer file.
+
+        A trailer file is any file in the directory that contains 'trailer' in its name
+        (case-insensitive), regardless of file extension or exact naming pattern.
+
+        Args:
+            movie_dir: Path to the movie directory to check.
+
+        Returns:
+            True if at least one trailer file is found, False otherwise.
+
+        Example:
+            >>> scanner = MovieScanner()
+            >>> scanner.has_trailer(Path("/movies/The Matrix (1999)"))
+            True
+        """
+        try:
+            for file_path in movie_dir.iterdir():
+                if file_path.is_file() and "trailer" in file_path.name.lower():
+                    logger.debug("Trailer found in: %s (%s)", movie_dir, file_path.name)
+                    return True
+            return False
+        except (PermissionError, OSError) as e:
+            logger.warning("Error checking for trailer in %s: %s", movie_dir, e)
+            return False
+
     def find_missing_trailers(
         self, paths: List[Path], max_results: Optional[int] = None
     ) -> List[Path]:
         """Find movie directories that are missing trailer files.
 
         Scans the provided paths for movie directories and identifies which ones
-        do not contain a trailer file matching the trailer_pattern.
+        do not contain a trailer file. A trailer file is any file containing
+        'trailer' in its name (case-insensitive), regardless of file extension.
 
         Note:
             Results are cached with a 24-hour TTL to improve performance on repeated scans.
@@ -138,14 +171,10 @@ class MovieScanner:
         missing_trailers = []
 
         for movie_dir in movie_dirs:
-            # Check if trailer exists using the pattern
-            trailer_files = list(movie_dir.glob(self.trailer_pattern))
-
-            if not trailer_files:
+            # Check if any trailer exists (any file containing '-trailer' in name)
+            if not self.has_trailer(movie_dir):
                 missing_trailers.append(movie_dir)
                 logger.debug("Missing trailer in: %s", movie_dir)
-            else:
-                logger.debug("Trailer found in: %s (%s)", movie_dir, trailer_files[0].name)
 
         logger.info(
             "Found %d movies without trailers out of %d total movies",

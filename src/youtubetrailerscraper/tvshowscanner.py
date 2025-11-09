@@ -4,7 +4,8 @@
 
 This module provides the TVShowScanner class which scans Plex TV show directories
 to identify TV shows that are missing trailer files. Trailers are expected to be
-located in a "trailers" subdirectory with the name "trailer.mp4".
+located in a "trailers" subdirectory and can be any file containing 'trailer' in
+the filename (case-insensitive), regardless of file extension.
 
 Example:
     Basic usage of TVShowScanner:
@@ -36,7 +37,9 @@ class TVShowScanner:
 
     This class scans Plex TV show directory structures to identify which TV shows
     are missing trailer files. Each TV show is expected to be in its own directory,
-    and trailers should be located in a "trailers" subdirectory with the name "trailer.mp4".
+    and trailers should be located in a "trailers" subdirectory. Any file containing
+    'trailer' in its name (case-insensitive) is considered a trailer, regardless
+    of file extension.
 
     Example directory structure:
         /tvshows/
@@ -44,15 +47,20 @@ class TVShowScanner:
                 Season 01/
                     episode1.mp4
                 trailers/
-                    trailer.mp4  # Trailer present
+                    trailer.mp4              # Trailer present
+                    breaking bad trailer.mkv # Also detected as trailer
+                    BreakingBadTrailer.avi   # Also detected as trailer
             The Wire/
                 Season 01/
                     episode1.mp4
                 # No trailers directory - this will be detected
 
     Attributes:
-        trailer_subdir: The subdirectory name where trailers are stored (default: "trailers")
-        trailer_filename: The expected trailer filename (default: "trailer.mp4")
+        trailer_subdir: The subdirectory name where trailers are stored
+                       (default: "trailers")
+        trailer_filename: The expected trailer filename for backward compatibility
+                         (default: "trailer.mp4"). Note: Actual detection now uses
+                         flexible pattern matching.
         season_pattern: Pattern prefix to identify season directories (default: "season")
         fs_scanner: FileSystemScanner instance for filesystem operations (injected dependency)
 
@@ -145,13 +153,49 @@ class TVShowScanner:
             max_results=max_results,
         )
 
+    def has_trailer(self, tvshow_dir: Path) -> bool:
+        """Check if a TV show directory contains any trailer file.
+
+        A trailer file is any file in the trailers subdirectory that contains
+        'trailer' in its name (case-insensitive), regardless of file extension.
+
+        Args:
+            tvshow_dir: Path to the TV show directory to check.
+
+        Returns:
+            True if at least one trailer file is found, False otherwise.
+
+        Example:
+            >>> scanner = TVShowScanner()
+            >>> scanner.has_trailer(Path("/tvshows/Breaking Bad"))
+            True
+        """
+        trailer_dir = tvshow_dir / self.trailer_subdir
+
+        # Check if trailers directory exists
+        if not trailer_dir.exists() or not trailer_dir.is_dir():
+            return False
+
+        try:
+            # Look for any file containing 'trailer' in the trailers directory
+            for file_path in trailer_dir.iterdir():
+                if file_path.is_file() and "trailer" in file_path.name.lower():
+                    logger.debug("Trailer found in: %s (%s)", tvshow_dir, file_path.name)
+                    return True
+            return False
+        except (PermissionError, OSError) as e:
+            logger.warning("Error checking for trailer in %s: %s", tvshow_dir, e)
+            return False
+
     def find_missing_trailers(
         self, paths: List[Path], max_results: Optional[int] = None
     ) -> List[Path]:
         """Find TV show directories that are missing trailer files.
 
         Scans the provided paths for TV show directories and identifies which ones
-        do not contain a trailer file in the expected location (trailers/trailer.mp4).
+        do not contain a trailer file. A trailer file is any file in the trailers
+        subdirectory containing 'trailer' in its name (case-insensitive), regardless
+        of file extension.
 
         Note:
             Results are cached with a 24-hour TTL to improve performance on repeated scans.
@@ -182,14 +226,10 @@ class TVShowScanner:
         missing_trailers = []
 
         for tvshow_dir in tvshow_dirs:
-            # Check if trailer exists in the expected location
-            trailer_path = tvshow_dir / self.trailer_subdir / self.trailer_filename
-
-            if not trailer_path.exists():
+            # Check if any trailer exists (any file containing '-trailer' in trailers subdir)
+            if not self.has_trailer(tvshow_dir):
                 missing_trailers.append(tvshow_dir)
                 logger.debug("Missing trailer in: %s", tvshow_dir)
-            else:
-                logger.debug("Trailer found in: %s", tvshow_dir)
 
         logger.info(
             "Found %d TV shows without trailers out of %d total TV shows",
