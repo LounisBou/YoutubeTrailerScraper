@@ -287,8 +287,8 @@ def test_scan_for_movies_with_sample_mode(tmp_path):
     try:
         scraper = YoutubeTrailerScraper(env_file=env_file)
         results = scraper.scan_for_movies_without_trailers(use_sample=True)
-        # Note: Sample mode not supported with CacheIt, returns all 5 movies
-        assert len(results) == 5
+        # Sample mode IS supported with CacheIt via sample_size parameter
+        assert len(results) == 3
     finally:
         os.unlink(env_file)
 
@@ -332,8 +332,8 @@ def test_scan_for_tvshows_with_sample_mode(tmp_path):
     try:
         scraper = YoutubeTrailerScraper(env_file=env_file)
         results = scraper.scan_for_tvshows_without_trailers(use_sample=True)
-        # Sample mode is not supported with CacheIt, so all 5 TV shows are returned
-        assert len(results) == 5
+        # Sample mode IS supported with CacheIt via sample_size parameter
+        assert len(results) == 3
     finally:
         os.unlink(env_file)
 

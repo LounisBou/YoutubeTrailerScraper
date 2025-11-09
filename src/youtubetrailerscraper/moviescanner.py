@@ -105,7 +105,9 @@ class MovieScanner:
             return False
 
     @CacheIt(max_duration=86400, backend="diskcache")  # 24 hour cache
-    def find_missing_trailers(self, paths: List[Path]) -> List[Path]:
+    def find_missing_trailers(  # pylint: disable=too-many-branches
+        self, paths: List[Path], sample_size: int = 0
+    ) -> List[Path]:
         """Find movie directories that are missing trailer files.
 
         Scans the provided paths for movie directories and identifies which ones
@@ -115,10 +117,15 @@ class MovieScanner:
         Note:
             Results are cached with a 24-hour TTL using CacheIt decorator.
             The complete results list is cached - directory scanning AND
-            trailer detection.
+            trailer detection. Cache key includes sample_size to ensure different
+            sample sizes use separate cache entries.
 
         Args:
             paths: List of directory paths to scan for movies with missing trailers.
+            sample_size: Optional number of movie folders to scan (0 = scan all folders).
+                         Stops scanning after this many movie folders are checked.
+                         Used as part of cache key to ensure different sample sizes
+                         use separate cache entries.
 
         Returns:
             List of Path objects representing movie directories without trailers.
@@ -130,11 +137,14 @@ class MovieScanner:
             >>> scanner = MovieScanner()
             >>> missing = scanner.find_missing_trailers([Path("/movies")])
             >>> print(f"Found {len(missing)} movies without trailers")
+            >>> # With sample mode
+            >>> sample = scanner.find_missing_trailers([Path("/movies")], sample_size=3)
         """
         if not paths:
             raise ValueError("Paths list cannot be empty")
 
         missing_trailers = []
+        scanned_count = 0
 
         for base_path in paths:
             if not base_path.exists():
@@ -149,13 +159,38 @@ class MovieScanner:
 
             try:
                 # Iterate through all subdirectories
+                checked_count = 0
                 for item in base_path.iterdir():
+                    # Check sample size limit - stop scanning if reached
+                    if 0 < sample_size <= scanned_count:
+                        logger.info(
+                            "Reached sample size limit (%d movies scanned, %d folders checked)",
+                            sample_size,
+                            checked_count,
+                        )
+                        break
+
                     if not item.is_dir():
                         continue
 
+                    checked_count += 1
+
+                    # Log progress every 100 folders
+                    if checked_count % 100 == 0:
+                        logger.info(
+                            "Progress: checked %d folders, found %d movies so far",
+                            checked_count,
+                            scanned_count,
+                        )
+
                     # Check if it's a movie directory (has video files)
                     if not self._has_video_files(item):
+                        logger.debug("Skipping non-movie directory: %s", item.name)
                         continue
+
+                    # Count this as a scanned movie folder
+                    scanned_count += 1
+                    logger.info("Found movie #%d: %s", scanned_count, item.name)
 
                     # Check if it has a trailer
                     if not self.has_trailer(item):
@@ -167,8 +202,14 @@ class MovieScanner:
             except OSError as e:
                 logger.error("Error scanning %s: %s", base_path, e)
 
+            # Break outer loop if sample size reached
+            if 0 < sample_size <= scanned_count:
+                break
+
         logger.info(
-            "Found %d movies without trailers",
+            "Scanned %d movie folders, found %d without trailers",
+            scanned_count,
             len(missing_trailers),
         )
+
         return missing_trailers

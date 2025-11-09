@@ -136,11 +136,38 @@ class TVShowScanner:
             True if directory appears to be a TV show directory, False otherwise.
         """
         try:
+            has_matching_subdir = False
             for subdir in directory.iterdir():
-                if subdir.is_dir() and subdir.name.lower().startswith(self.season_pattern):
-                    if self._has_video_files(subdir):
+                if not subdir.is_dir():
+                    continue
+
+                subdir_lower = subdir.name.lower()
+                logger.debug(
+                    "Checking subdir '%s' - starts with '%s': %s",
+                    subdir.name,
+                    self.season_pattern,
+                    subdir_lower.startswith(self.season_pattern),
+                )
+
+                if subdir_lower.startswith(self.season_pattern):
+                    has_matching_subdir = True
+                    has_videos = self._has_video_files(subdir)
+                    logger.debug(
+                        "Season dir '%s' has video files: %s", subdir.name, has_videos
+                    )
+                    if has_videos:
                         return True
-            # If we found season directories but no videos, still return False
+
+            if has_matching_subdir:
+                logger.debug(
+                    "Directory '%s' has season dirs but no videos", directory.name
+                )
+            else:
+                logger.debug(
+                    "Directory '%s' has no subdirs matching pattern '%s'",
+                    directory.name,
+                    self.season_pattern,
+                )
             return False
         except (PermissionError, OSError) as e:
             logger.warning("Error checking if TV show directory %s: %s", directory, e)
@@ -176,7 +203,9 @@ class TVShowScanner:
             return False
 
     @CacheIt(max_duration=86400, backend="diskcache")  # 24 hour cache
-    def find_missing_trailers(self, paths: List[Path]) -> List[Path]:
+    def find_missing_trailers(  # pylint: disable=too-many-branches
+        self, paths: List[Path], sample_size: int = 0
+    ) -> List[Path]:
         """Find TV show directories that are missing trailer files.
 
         Scans the provided paths for TV show directories and identifies which ones
@@ -187,10 +216,15 @@ class TVShowScanner:
         Note:
             Results are cached with a 24-hour TTL using CacheIt decorator.
             The complete results list is cached - directory scanning AND
-            trailer detection.
+            trailer detection. Cache key includes sample_size to ensure different
+            sample sizes use separate cache entries.
 
         Args:
             paths: List of directory paths to scan for TV shows with missing trailers.
+            sample_size: Optional number of TV show folders to scan (0 = scan all folders).
+                         Stops scanning after this many TV show folders are checked.
+                         Used as part of cache key to ensure different sample sizes
+                         use separate cache entries.
 
         Returns:
             List of Path objects representing TV show directories without trailers.
@@ -202,11 +236,14 @@ class TVShowScanner:
             >>> scanner = TVShowScanner()
             >>> missing = scanner.find_missing_trailers([Path("/tvshows")])
             >>> print(f"Found {len(missing)} TV shows without trailers")
+            >>> # With sample mode
+            >>> sample = scanner.find_missing_trailers([Path("/tvshows")], sample_size=3)
         """
         if not paths:
             raise ValueError("Paths list cannot be empty")
 
         missing_trailers = []
+        scanned_count = 0
 
         for base_path in paths:
             if not base_path.exists():
@@ -221,13 +258,38 @@ class TVShowScanner:
 
             try:
                 # Iterate through all subdirectories
+                checked_count = 0
                 for item in base_path.iterdir():
+                    # Check sample size limit - stop scanning if reached
+                    if 0 < sample_size <= scanned_count:
+                        logger.info(
+                            "Reached sample size limit (%d TV shows scanned, %d folders checked)",
+                            sample_size,
+                            checked_count,
+                        )
+                        break
+
                     if not item.is_dir():
                         continue
 
+                    checked_count += 1
+
+                    # Log progress every 100 folders
+                    if checked_count % 100 == 0:
+                        logger.info(
+                            "Progress: checked %d folders, found %d TV shows so far",
+                            checked_count,
+                            scanned_count,
+                        )
+
                     # Check if it's a TV show directory
                     if not self._is_tvshow_directory(item):
+                        logger.debug("Skipping non-TV-show directory: %s", item.name)
                         continue
+
+                    # Count this as a scanned TV show folder
+                    scanned_count += 1
+                    logger.info("Found TV show #%d: %s", scanned_count, item.name)
 
                     # Check if it has a trailer
                     if not self.has_trailer(item):
@@ -239,8 +301,14 @@ class TVShowScanner:
             except OSError as e:
                 logger.error("Error scanning %s: %s", base_path, e)
 
+            # Break outer loop if sample size reached
+            if 0 < sample_size <= scanned_count:
+                break
+
         logger.info(
-            "Found %d TV shows without trailers",
+            "Scanned %d TV show folders, found %d without trailers",
+            scanned_count,
             len(missing_trailers),
         )
+
         return missing_trailers
