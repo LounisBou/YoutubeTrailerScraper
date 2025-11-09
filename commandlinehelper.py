@@ -182,6 +182,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Use SMB mount point for media directories",
     )
+    # Clear cache
+    args_parser.add_argument(
+        "--clear-cache",
+        action="store_true",
+        help="Clear the filesystem scan cache before running",
+    )
     return args_parser.parse_args()
 
 
