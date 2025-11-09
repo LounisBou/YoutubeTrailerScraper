@@ -282,6 +282,56 @@ All trailer videos are downloaded using **yt-dlp**.
 
 ---
 
+### 📋 Step 7: Code Reorganization
+**Status**: NOT STARTED
+
+**Tasks:**
+- [ ] Reorganize `src/youtubetrailerscraper/` into logical subfolders
+  - [ ] Create `scanners/` subfolder (filesystemscanner.py, moviescanner.py, tvshowscanner.py)
+  - [ ] Create `search/` subfolder (tmdbsearchengine.py, youtubesearchengine.py)
+  - [ ] Create `download/` subfolder (youtubedownloader.py)
+  - [ ] Keep `youtubetrailerscraper.py` at top level (main orchestrator)
+  - [ ] Update all imports across the codebase
+  - [ ] Add `__init__.py` files to each subfolder
+  - [ ] Update test imports
+  - [ ] Verify all tests still pass
+
+**Files to modify:**
+- All files in `src/youtubetrailerscraper/`
+- All test files in `tests/`
+- `main.py` (import statements)
+- Package `__init__.py`
+
+**Proposed structure:**
+```
+src/youtubetrailerscraper/
+├── __init__.py
+├── _about.py
+├── scanners/
+│   ├── __init__.py
+│   ├── filesystemscanner.py
+│   ├── moviescanner.py
+│   └── tvshowscanner.py
+├── search/
+│   ├── __init__.py
+│   ├── tmdbsearchengine.py
+│   └── youtubesearchengine.py
+├── download/
+│   ├── __init__.py
+│   └── youtubedownloader.py
+└── youtubetrailerscraper.py
+```
+
+**Rationale:**
+- Clear separation of concerns (scan → search → download)
+- Better scalability for future additions
+- Mirrors the 3-tier architecture workflow
+- Easier to maintain and navigate as codebase grows
+
+**Note:** This step should be done AFTER Steps 4-6 are complete to avoid unnecessary churn during active development.
+
+---
+
 ## Future Enhancements (Post v1.0)
 
 ### Potential Features:
@@ -336,4 +386,4 @@ All trailer videos are downloaded using **yt-dlp**.
 
 ---
 
-**Last Updated**: 2025-11-08
+**Last Updated**: 2025-11-09
