@@ -32,7 +32,6 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from youtubetrailerscraper.filesystemscanner import FileSystemScanner
 from youtubetrailerscraper.moviescanner import MovieScanner
 from youtubetrailerscraper.tvshowscanner import TVShowScanner
 
@@ -156,8 +155,14 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
                     "Invalid SCAN_SAMPLE_SIZE value '%s', ignoring", scan_sample_str
                 )
                 self.scan_sample_size = None
-        else:
-            self.scan_sample_size = None
+
+        # Load TV show season pattern
+        season_pattern_raw = self._get_env_var(
+            "TVSHOWS_SEASON_SUBDIR_PATTERN", default="Season {season_number}"
+        )
+        # Extract prefix before {season_number} (e.g., "Saison" from "Saison {season_number}")
+        self.tvshow_season_pattern = season_pattern_raw.split("{")[0].strip()
+        self.logger.debug("TV show season pattern set to: %s", self.tvshow_season_pattern)
 
     def _get_env_var(self, key: str, required: bool = False, default: str = "") -> str:
         """
@@ -261,18 +266,15 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             self.logger.debug("No movie paths configured, skipping movie scan")
             return []
 
-        max_results = self.scan_sample_size if use_sample else None
-        if max_results:
-            self.logger.info("Sample mode: scanning up to %d movies", max_results)
+        # Determine sample size to use (0 = no sampling, all results)
+        sample_size = self.scan_sample_size if use_sample and self.scan_sample_size else 0
 
         self.logger.debug("Scanning %d movie directories...", len(self.movies_paths))
         for path in self.movies_paths:
             self.logger.debug("  - %s", path)
 
         scanner = MovieScanner()
-        missing_trailers = scanner.find_missing_trailers(
-            self.movies_paths, max_results=max_results
-        )
+        missing_trailers = scanner.find_missing_trailers(self.movies_paths, sample_size)
 
         self.logger.info("Found %d movies without trailers", len(missing_trailers))
         for movie_path in missing_trailers:
@@ -305,18 +307,15 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             self.logger.debug("No TV show paths configured, skipping TV show scan")
             return []
 
-        max_results = self.scan_sample_size if use_sample else None
-        if max_results:
-            self.logger.info("Sample mode: scanning up to %d TV shows", max_results)
+        # Determine sample size to use (0 = no sampling, all results)
+        sample_size = self.scan_sample_size if use_sample and self.scan_sample_size else 0
 
         self.logger.debug("Scanning %d TV show directories...", len(self.tvshows_paths))
         for path in self.tvshows_paths:
             self.logger.debug("  - %s", path)
 
-        scanner = TVShowScanner()
-        missing_trailers = scanner.find_missing_trailers(
-            self.tvshows_paths, max_results=max_results
-        )
+        scanner = TVShowScanner(season_pattern=self.tvshow_season_pattern)
+        missing_trailers = scanner.find_missing_trailers(self.tvshows_paths, sample_size)
 
         self.logger.info("Found %d TV shows without trailers", len(missing_trailers))
         for tvshow_path in missing_trailers:
@@ -344,15 +343,17 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         return []
 
     def clear_cache(self) -> None:
-        """Clear the filesystem scan cache.
+        """Clear the cache for all scanners.
 
         This removes all cached scan results, forcing a fresh scan
         on the next execution. Useful when media libraries have been
         updated and you want to bypass the cache.
 
-        The cache is stored in .cache/filesystemscanner/ directory.
+        The cache is stored in __cacheit__/ directory.
         """
-        self.logger.info("Clearing filesystem scan cache...")
-        scanner = FileSystemScanner()
-        scanner.clear_cache()
+        self.logger.info("Clearing cache...")
+        # Clear cache for both scanners
+        MovieScanner().find_missing_trailers.clear_cache()
+        tvshow_scanner = TVShowScanner(season_pattern=self.tvshow_season_pattern)
+        tvshow_scanner.find_missing_trailers.clear_cache()
         self.logger.info("Cache cleared successfully")

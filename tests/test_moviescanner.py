@@ -102,94 +102,13 @@ def multi_disk_structure(tmp_path):
     return disk1, disk2
 
 
-class TestMovieScannerInit:
+class TestMovieScannerInit:  # pylint: disable=too-few-public-methods
     """Test MovieScanner initialization."""
 
     def test_default_initialization(self):
-        """Test MovieScanner initializes with default trailer pattern."""
+        """Test MovieScanner initializes correctly."""
         scanner = MovieScanner()
-        assert scanner.trailer_pattern == "*-trailer.mp4"
-
-    def test_custom_pattern_initialization(self):
-        """Test MovieScanner initializes with custom trailer pattern."""
-        scanner = MovieScanner(trailer_pattern="*-preview.mp4")
-        assert scanner.trailer_pattern == "*-preview.mp4"
-
-
-class TestMovieScannerScan:
-    """Test MovieScanner.scan() method."""
-
-    def test_scan_single_directory(
-        self, temp_movie_structure
-    ):  # pylint: disable=redefined-outer-name
-        """Test scanning a single directory for movie folders."""
-        scanner = MovieScanner()
-        movie_dirs = scanner.scan([temp_movie_structure])
-
-        # Should find 3 movie directories (not the empty directory)
-        assert len(movie_dirs) == 3
-
-        movie_names = {d.name for d in movie_dirs}
-        assert "Movie With Trailer (2020)" in movie_names
-        assert "Movie Missing Preview (2021)" in movie_names
-        assert "Movie With Multiple Videos (2022)" in movie_names
-        assert "Empty Directory" not in movie_names
-
-    def test_scan_multiple_directories(
-        self, multi_disk_structure
-    ):  # pylint: disable=redefined-outer-name
-        """Test scanning multiple directories for movie folders."""
-        disk1, disk2 = multi_disk_structure
-        scanner = MovieScanner()
-        movie_dirs = scanner.scan([disk1, disk2])
-
-        # Should find 4 movie directories across both disks
-        assert len(movie_dirs) == 4
-
-        movie_names = {d.name for d in movie_dirs}
-        assert "Movie A (2020)" in movie_names
-        assert "Movie B (2021)" in movie_names
-        assert "Movie C (2022)" in movie_names
-        assert "Movie D (2023)" in movie_names
-
-    def test_scan_empty_paths_list(self):
-        """Test scanning with empty paths list raises ValueError."""
-        scanner = MovieScanner()
-        with pytest.raises(ValueError, match="Paths list cannot be empty"):
-            scanner.scan([])
-
-    def test_scan_nonexistent_path(self, tmp_path):
-        """Test scanning nonexistent path returns empty list."""
-        scanner = MovieScanner()
-        nonexistent = tmp_path / "does_not_exist"
-        movie_dirs = scanner.scan([nonexistent])
-
-        # Should return empty list and log warning
-        assert not movie_dirs
-
-    def test_scan_file_instead_of_directory(self, tmp_path):
-        """Test scanning a file instead of directory returns empty list."""
-        scanner = MovieScanner()
-        test_file = tmp_path / "test.txt"
-        test_file.touch()
-        movie_dirs = scanner.scan([test_file])
-
-        # Should return empty list and log warning
-        assert not movie_dirs
-
-    def test_scan_supports_various_video_extensions(self, tmp_path):
-        """Test that scan detects various video file extensions."""
-        scanner = MovieScanner()
-
-        # Create movies with different video extensions
-        extensions = [".mp4", ".mkv", ".avi", ".m4v", ".mov"]
-        for ext in extensions:
-            movie_dir = tmp_path / f"Movie{ext}"
-            movie_dir.mkdir()
-            (movie_dir / f"video{ext}").touch()
-
-        movie_dirs = scanner.scan([tmp_path])
-        assert len(movie_dirs) == len(extensions)
+        assert scanner is not None
 
 
 class TestMovieScannerFindMissingTrailers:
@@ -260,27 +179,6 @@ class TestMovieScannerFindMissingTrailers:
 
         missing = scanner.find_missing_trailers([tmp_path])
         assert len(missing) == movie_count
-
-    def test_custom_trailer_pattern(self, tmp_path):
-        """Test that trailer_pattern parameter is maintained for backward compatibility."""
-        scanner = MovieScanner(trailer_pattern="*-preview.mp4")
-
-        # The trailer_pattern is now for backward compatibility only
-        # Actual detection uses flexible pattern matching (-trailer keyword)
-        movie1 = tmp_path / "Movie 1"
-        movie1.mkdir()
-        (movie1 / "Movie 1.mp4").touch()
-        (movie1 / "Movie 1-trailer.mp4").touch()  # Has -trailer
-
-        movie2 = tmp_path / "Movie 2"
-        movie2.mkdir()
-        (movie2 / "Movie 2.mp4").touch()
-
-        missing = scanner.find_missing_trailers([tmp_path])
-
-        # Movie 1 has trailer (with -trailer keyword), Movie 2 doesn't
-        assert len(missing) == 1
-        assert missing[0].name == "Movie 2"
 
     def test_find_missing_trailers_nonexistent_path(self, tmp_path):
         """Test finding missing trailers in nonexistent path returns empty list."""
