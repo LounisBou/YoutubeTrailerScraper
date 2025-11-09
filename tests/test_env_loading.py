@@ -122,12 +122,8 @@ def test_smb_mount_with_env_variable():
         assert scraper.smb_mount_point == "/Volumes/MediaServer"
         assert len(scraper.movies_paths) == 2
         # SMB mount point is prepended to paths as Path objects
-        assert scraper.movies_paths[0] == Path(
-            "/Volumes/MediaServer/Volumes/Disk1/medias/films"
-        )
-        assert scraper.movies_paths[1] == Path(
-            "/Volumes/MediaServer/Volumes/Disk2/medias/films"
-        )
+        assert scraper.movies_paths[0] == Path("/Volumes/MediaServer/Volumes/Disk1/medias/films")
+        assert scraper.movies_paths[1] == Path("/Volumes/MediaServer/Volumes/Disk2/medias/films")
         assert scraper.tvshows_paths[0] == Path(
             "/Volumes/MediaServer/Volumes/Disk1/medias/tvshows"
         )
@@ -150,9 +146,7 @@ def test_smb_mount_with_constructor_flag():
 
         assert scraper.use_smb_mount is True
         # SMB mount point is prepended to paths as Path objects
-        assert scraper.movies_paths[0] == Path(
-            "/Volumes/MediaServer/Volumes/Disk1/medias/films"
-        )
+        assert scraper.movies_paths[0] == Path("/Volumes/MediaServer/Volumes/Disk1/medias/films")
         assert scraper.tvshows_paths[0] == Path(
             "/Volumes/MediaServer/Volumes/Disk1/medias/tvshows"
         )
@@ -200,8 +194,6 @@ def test_smb_mount_env_overrides_constructor():
         # Environment variable should override constructor parameter
         assert scraper.use_smb_mount is True
         # SMB mount point is prepended to paths as Path objects
-        assert scraper.movies_paths[0] == Path(
-            "/Volumes/MediaServer/Volumes/Disk1/medias/films"
-        )
+        assert scraper.movies_paths[0] == Path("/Volumes/MediaServer/Volumes/Disk1/medias/films")
     finally:
         os.unlink(env_file)

@@ -59,10 +59,7 @@ def run_cli_with_env(env_file: str, *args: str) -> subprocess.CompletedProcess[s
 
         # Run CLI
         result = subprocess.run(
-            [sys.executable, "main.py", *args],
-            text=True,
-            capture_output=True,
-            check=False
+            [sys.executable, "main.py", *args], text=True, capture_output=True, check=False
         )
         return result
     finally:
@@ -76,10 +73,7 @@ def run_cli_with_env(env_file: str, *args: str) -> subprocess.CompletedProcess[s
 def test_cli_help() -> None:
     """Test that CLI help option works."""
     result = subprocess.run(
-        [sys.executable, "main.py", "-h"],
-        text=True,
-        capture_output=True,
-        check=False
+        [sys.executable, "main.py", "-h"], text=True, capture_output=True, check=False
     )
     # Help text should contain usage information
     assert "usage" in result.stdout.lower() or "help" in result.stdout.lower()

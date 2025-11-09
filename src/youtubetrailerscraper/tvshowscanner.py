@@ -41,9 +41,7 @@ class TVShowScanner:
         """
         return []
 
-    def find_missing_trailers(
-        self, path: Path  # pylint: disable=unused-argument
-    ) -> list[Path]:
+    def find_missing_trailers(self, path: Path) -> list[Path]:  # pylint: disable=unused-argument
         """
         Find missing trailers in the given path
 

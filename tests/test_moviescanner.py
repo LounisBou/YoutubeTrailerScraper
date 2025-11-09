@@ -118,7 +118,9 @@ class TestMovieScannerInit:
 class TestMovieScannerScan:
     """Test MovieScanner.scan() method."""
 
-    def test_scan_single_directory(self, temp_movie_structure):  # pylint: disable=redefined-outer-name
+    def test_scan_single_directory(
+        self, temp_movie_structure
+    ):  # pylint: disable=redefined-outer-name
         """Test scanning a single directory for movie folders."""
         scanner = MovieScanner()
         movie_dirs = scanner.scan([temp_movie_structure])
@@ -132,7 +134,9 @@ class TestMovieScannerScan:
         assert "Movie With Multiple Videos (2022)" in movie_names
         assert "Empty Directory" not in movie_names
 
-    def test_scan_multiple_directories(self, multi_disk_structure):  # pylint: disable=redefined-outer-name
+    def test_scan_multiple_directories(
+        self, multi_disk_structure
+    ):  # pylint: disable=redefined-outer-name
         """Test scanning multiple directories for movie folders."""
         disk1, disk2 = multi_disk_structure
         scanner = MovieScanner()
@@ -190,7 +194,9 @@ class TestMovieScannerScan:
 class TestMovieScannerFindMissingTrailers:
     """Test MovieScanner.find_missing_trailers() method."""
 
-    def test_find_missing_trailers_single_directory(self, temp_movie_structure):  # pylint: disable=redefined-outer-name
+    def test_find_missing_trailers_single_directory(
+        self, temp_movie_structure
+    ):  # pylint: disable=redefined-outer-name
         """Test finding movies without trailers in a single directory."""
         scanner = MovieScanner()
         missing = scanner.find_missing_trailers([temp_movie_structure])
@@ -203,7 +209,9 @@ class TestMovieScannerFindMissingTrailers:
         assert "Movie With Multiple Videos (2022)" in movie_names
         assert "Movie With Trailer (2020)" not in movie_names
 
-    def test_find_missing_trailers_multiple_directories(self, multi_disk_structure):  # pylint: disable=redefined-outer-name
+    def test_find_missing_trailers_multiple_directories(
+        self, multi_disk_structure
+    ):  # pylint: disable=redefined-outer-name
         """Test finding movies without trailers across multiple directories."""
         disk1, disk2 = multi_disk_structure
         scanner = MovieScanner()
