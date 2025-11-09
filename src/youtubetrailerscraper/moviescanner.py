@@ -24,25 +24,11 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
-from cachetools import TTLCache
-from cachetools.keys import hashkey
+from .filesystemscanner import FileSystemScanner
 
 logger = logging.getLogger(__name__)
-
-
-def _path_list_key(self, paths: List[Path]) -> tuple:  # pylint: disable=unused-argument
-    """Create a hashable cache key from a list of Path objects.
-
-    Args:
-        self: Instance reference (unused, for method signature compatibility).
-        paths: List of Path objects to convert into a cache key.
-
-    Returns:
-        Tuple of path strings suitable for use as a cache key.
-    """
-    return hashkey(tuple(str(p) for p in paths))
 
 
 class MovieScanner:
@@ -63,22 +49,27 @@ class MovieScanner:
 
     Attributes:
         trailer_pattern: The glob pattern used to detect trailer files (default: "*-trailer.mp4")
+        fs_scanner: FileSystemScanner instance for filesystem operations (injected dependency)
 
     Note:
-        Both scan() and find_missing_trailers() methods use a 24-hour TTL cache to avoid
+        Uses FileSystemScanner service with 24-hour TTL cache to avoid
         redundant filesystem scans. The cache automatically expires after 24 hours.
     """
 
-    def __init__(self, trailer_pattern: str = "*-trailer.mp4"):
+    def __init__(
+        self,
+        trailer_pattern: str = "*-trailer.mp4",
+        fs_scanner: Optional[FileSystemScanner] = None,
+    ):
         """Initialize MovieScanner with trailer detection pattern.
 
         Args:
             trailer_pattern: Glob pattern to match trailer files. Defaults to "*-trailer.mp4".
+            fs_scanner: FileSystemScanner instance for dependency injection.
+                If None, creates a new instance with default settings.
         """
         self.trailer_pattern = trailer_pattern
-        # Cache with 24-hour TTL (86400 seconds), max 100 entries
-        self._scan_cache = TTLCache(maxsize=100, ttl=86400)
-        self._missing_trailers_cache = TTLCache(maxsize=100, ttl=86400)
+        self.fs_scanner = fs_scanner or FileSystemScanner()
         logger.debug("MovieScanner initialized with pattern: %s", trailer_pattern)
 
     def scan(self, paths: List[Path]) -> List[Path]:
@@ -90,6 +81,7 @@ class MovieScanner:
 
         Note:
             Results are cached with a 24-hour TTL to improve performance on repeated scans.
+            Uses FileSystemScanner service for actual filesystem operations.
 
         Args:
             paths: List of directory paths to scan for movies. Can be Path objects or strings.
@@ -100,53 +92,10 @@ class MovieScanner:
         Raises:
             ValueError: If paths is empty or None.
         """
-        if not paths:
-            raise ValueError("Paths list cannot be empty")
-
-        # Check cache
-        cache_key = _path_list_key(self, paths)
-        if cache_key in self._scan_cache:
-            logger.debug("Cache hit for scan()")
-            return self._scan_cache[cache_key]
-
-        movie_dirs = []
-        video_extensions = {".mp4", ".mkv", ".avi", ".m4v", ".mov"}
-
-        for base_path in paths:
-            if not base_path.exists():
-                logger.warning("Path does not exist: %s", base_path)
-                continue
-
-            if not base_path.is_dir():
-                logger.warning("Path is not a directory: %s", base_path)
-                continue
-
-            logger.info("Scanning path: %s", base_path)
-
-            try:
-                # Iterate through all subdirectories
-                for item in base_path.iterdir():
-                    if not item.is_dir():
-                        continue
-
-                    # Check if this directory contains video files
-                    has_video = any(
-                        f.suffix.lower() in video_extensions for f in item.iterdir() if f.is_file()
-                    )
-
-                    if has_video:
-                        movie_dirs.append(item)
-                        logger.debug("Found movie directory: %s", item)
-
-            except PermissionError:
-                logger.error("Permission denied accessing: %s", base_path)
-            except OSError as e:
-                logger.error("Error scanning %s: %s", base_path, e)
-
-        logger.info("Found %d movie directories", len(movie_dirs))
-        # Store in cache
-        self._scan_cache[cache_key] = movie_dirs
-        return movie_dirs
+        # Delegate to FileSystemScanner with movie-specific filter
+        return self.fs_scanner.scan_directories(
+            paths, filter_func=self.fs_scanner.has_video_files, filter_name="movie_scan"
+        )
 
     def find_missing_trailers(self, paths: List[Path]) -> List[Path]:
         """Find movie directories that are missing trailer files.
@@ -174,13 +123,7 @@ class MovieScanner:
         if not paths:
             raise ValueError("Paths list cannot be empty")
 
-        # Check cache
-        cache_key = _path_list_key(self, paths)
-        if cache_key in self._missing_trailers_cache:
-            logger.debug("Cache hit for find_missing_trailers()")
-            return self._missing_trailers_cache[cache_key]
-
-        # First, find all movie directories
+        # First, find all movie directories using FileSystemScanner
         movie_dirs = self.scan(paths)
 
         missing_trailers = []
@@ -200,6 +143,4 @@ class MovieScanner:
             len(missing_trailers),
             len(movie_dirs),
         )
-        # Store in cache
-        self._missing_trailers_cache[cache_key] = missing_trailers
         return missing_trailers

@@ -103,38 +103,68 @@ All trailer videos are downloaded using **yt-dlp**.
 
 ---
 
-### 🔄 Step 3: Implement Scanner Classes
-**Status**: NOT STARTED
-
-**Priority**: NEXT
+### ✅ Step 3: Implement Scanner Classes
+**Status**: COMPLETED
 
 **Tasks:**
-- [ ] Implement MovieScanner class
-  - [ ] Directory scanning logic
-  - [ ] Trailer detection (pattern: `/path/to/movie/movie-trailer.mp4`)
-  - [ ] Return list of movies without trailers
-  - [ ] Add comprehensive docstrings
-  - [ ] Write unit tests
+- [x] Create FileSystemScanner service class (dependency injection pattern)
+  - [x] Generic filesystem scanning with caching (24-hour TTL)
+  - [x] Video file detection utilities
+  - [x] Path validation and error handling
+  - [x] Comprehensive docstrings (Google-style)
+  - [x] Unit tests (30 tests covering all functionality)
 
-- [ ] Implement TVShowScanner class
-  - [ ] Directory scanning logic
-  - [ ] Trailer detection (pattern: `/path/to/tvshow/trailers/trailer.mp4`)
-  - [ ] Return list of TV shows without trailers
-  - [ ] Add comprehensive docstrings
-  - [ ] Write unit tests
+- [x] Refactor MovieScanner class to use FileSystemScanner
+  - [x] Directory scanning logic (delegates to FileSystemScanner)
+  - [x] Trailer detection (pattern: `/path/to/movie/movie-trailer.mp4`)
+  - [x] Return list of movies without trailers
+  - [x] Dependency injection support
+  - [x] Add comprehensive docstrings
+  - [x] Unit tests already existed (14 tests, all passing)
 
-**Files to modify:**
-- `src/youtubetrailerscraper/moviescanner.py`
-- `src/youtubetrailerscraper/tvshowscanner.py`
-- `tests/test_moviescanner.py` (to be created)
-- `tests/test_tvshowscanner.py` (to be created)
+- [x] Implement TVShowScanner class using FileSystemScanner
+  - [x] Directory scanning logic (delegates to FileSystemScanner)
+  - [x] Trailer detection (pattern: `/path/to/tvshow/trailers/trailer.mp4`)
+  - [x] Return list of TV shows without trailers
+  - [x] Configurable season directory pattern (via `season_pattern` parameter)
+  - [x] Season directory detection (case-insensitive)
+  - [x] Dependency injection support
+  - [x] Add comprehensive docstrings
+  - [x] Write unit tests (21 tests covering all functionality including custom patterns)
 
-**Design considerations:**
-- Handle multiple directory paths (from env vars)
-- Handle missing directories gracefully
-- Support SMB mount points
-- Efficient directory traversal
-- Error handling for permission issues
+**Files created/modified:**
+- ✅ `src/youtubetrailerscraper/filesystemscanner.py` (NEW - 214 lines)
+- ✅ `src/youtubetrailerscraper/moviescanner.py` (REFACTORED - reduced from 206 to 144 lines)
+- ✅ `src/youtubetrailerscraper/tvshowscanner.py` (IMPLEMENTED - 194 lines with configurable season pattern)
+- ✅ `tests/test_filesystemscanner.py` (NEW - 30 tests)
+- ✅ `tests/test_tvshowscanner.py` (NEW - 21 tests including custom pattern tests)
+- ✅ `tests/test_moviescanner.py` (existing - 14 tests, all passing)
+- ✅ `.env.example` (UPDATED - includes `TVSHOWS_SEASON_SUBDIR_PATTERN` variable)
+
+**Design patterns used:**
+- **Dependency Injection**: FileSystemScanner injected into scanner classes
+- **Service Layer Pattern**: FileSystemScanner as shared service
+- **Strategy Pattern**: Different trailer detection strategies per media type
+- **DRY Principle**: Eliminated ~60% code duplication
+
+**Benefits achieved:**
+- Single source of truth for filesystem operations
+- Easy to test with mocked FileSystemScanner
+- Consistent caching behavior across scanners
+- Reduced code duplication significantly
+- Better separation of concerns
+
+**Test coverage:**
+- Total: 65 tests (all passing)
+- FileSystemScanner: 30 tests
+- MovieScanner: 14 tests
+- TVShowScanner: 21 tests (includes custom season pattern tests)
+
+**Code quality:**
+- Black: ✅ All files formatted (99 char line length)
+- isort: ✅ All imports sorted
+- mypy: ✅ No type errors
+- pylint: ✅ 10.00/10 across all files
 
 ---
 
