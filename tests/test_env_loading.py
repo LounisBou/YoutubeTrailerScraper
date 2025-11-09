@@ -102,3 +102,98 @@ def test_env_loading_missing_file():
     """Test that FileNotFoundError is raised when .env file doesn't exist."""
     with pytest.raises(FileNotFoundError, match="Environment file not found"):
         YoutubeTrailerScraper(env_file="nonexistent.env")
+
+
+def test_smb_mount_with_env_variable():
+    """Test that SMB mount point is prepended when USE_SMB_MOUNT=true in env."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/Volumes/Disk1/medias/films/", "/Volumes/Disk2/medias/films/"]\n')
+        f.write('TVSHOWS_PATHS=["/Volumes/Disk1/medias/tvshows/"]\n')
+        f.write("SMB_MOUNT_POINT=/Volumes/MediaServer\n")
+        f.write("USE_SMB_MOUNT=true\n")
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+
+        assert scraper.use_smb_mount is True
+        assert scraper.smb_mount_point == "/Volumes/MediaServer"
+        assert len(scraper.movies_paths) == 2
+        # SMB mount point is prepended to paths as Path objects
+        assert scraper.movies_paths[0] == Path("/Volumes/MediaServer/Volumes/Disk1/medias/films")
+        assert scraper.movies_paths[1] == Path("/Volumes/MediaServer/Volumes/Disk2/medias/films")
+        assert scraper.tvshows_paths[0] == Path(
+            "/Volumes/MediaServer/Volumes/Disk1/medias/tvshows"
+        )
+    finally:
+        os.unlink(env_file)
+
+
+def test_smb_mount_with_constructor_flag():
+    """Test that SMB mount point is prepended when use_smb=True in constructor."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/Volumes/Disk1/medias/films/"]\n')
+        f.write('TVSHOWS_PATHS=["/Volumes/Disk1/medias/tvshows/"]\n')
+        f.write("SMB_MOUNT_POINT=/Volumes/MediaServer\n")
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file, use_smb=True)
+
+        assert scraper.use_smb_mount is True
+        # SMB mount point is prepended to paths as Path objects
+        assert scraper.movies_paths[0] == Path("/Volumes/MediaServer/Volumes/Disk1/medias/films")
+        assert scraper.tvshows_paths[0] == Path(
+            "/Volumes/MediaServer/Volumes/Disk1/medias/tvshows"
+        )
+    finally:
+        os.unlink(env_file)
+
+
+def test_smb_mount_disabled():
+    """Test that SMB mount point is NOT prepended when USE_SMB_MOUNT=false."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/Volumes/Disk1/medias/films/"]\n')
+        f.write('TVSHOWS_PATHS=["/Volumes/Disk1/medias/tvshows/"]\n')
+        f.write("SMB_MOUNT_POINT=/Volumes/MediaServer\n")
+        f.write("USE_SMB_MOUNT=false\n")
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+
+        assert scraper.use_smb_mount is False
+        # Paths are not prefixed when SMB mount is disabled
+        assert scraper.movies_paths[0] == Path("/Volumes/Disk1/medias/films/")
+        assert scraper.tvshows_paths[0] == Path("/Volumes/Disk1/medias/tvshows/")
+    finally:
+        os.unlink(env_file)
+
+
+def test_smb_mount_env_overrides_constructor():
+    """Test that USE_SMB_MOUNT env variable overrides constructor parameter."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/Volumes/Disk1/medias/films/"]\n')
+        f.write('TVSHOWS_PATHS=["/Volumes/Disk1/medias/tvshows/"]\n')
+        f.write("SMB_MOUNT_POINT=/Volumes/MediaServer\n")
+        f.write("USE_SMB_MOUNT=true\n")
+        env_file = f.name
+
+    try:
+        # Pass use_smb=False, but env has USE_SMB_MOUNT=true
+        scraper = YoutubeTrailerScraper(env_file=env_file, use_smb=False)
+
+        # Environment variable should override constructor parameter
+        assert scraper.use_smb_mount is True
+        # SMB mount point is prepended to paths as Path objects
+        assert scraper.movies_paths[0] == Path("/Volumes/MediaServer/Volumes/Disk1/medias/films")
+    finally:
+        os.unlink(env_file)

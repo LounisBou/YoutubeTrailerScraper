@@ -8,6 +8,7 @@ CLI:
 
 """
 from __future__ import annotations
+
 import sys
 import traceback
 
@@ -17,25 +18,23 @@ from commandlinehelper import (
     SUCCESS,
     WARNING,
     check_args,
+    format_scan_results,
     parse_args,
     print_message,
     set_default_args_values,
 )
-
 from src.youtubetrailerscraper import YoutubeTrailerScraper
 
 
-def _main() -> int:
-    """
-    Command-line interface main function.
-    Exit code:
-        0: Success
-        1: General error
-        2: Argument error
-    Raises:
-        SystemExit: If argument parsing fails.
-    """
+def _parse_and_validate_args():
+    """Parse and validate command-line arguments.
 
+    Returns:
+        Parsed and validated arguments.
+
+    Raises:
+        SystemExit: If parsing or validation fails (exits with code 2).
+    """
     # Parse arguments
     try:
         args = parse_args()
@@ -50,38 +49,50 @@ def _main() -> int:
         print_message(f"Argument error: {e}", WARNING)
         sys.exit(2)
 
-    # Set default values and validate args
     try:
         check_args(args)
     except (FileNotFoundError, ValueError) as e:
         print_message(f"Argument error: {e}", ERROR)
         sys.exit(2)
 
+    return args
+
+
+def _load_scraper(verbose: bool, use_smb: bool):
+    """Load and initialize the YoutubeTrailerScraper.
+
+    Args:
+        verbose: Whether to print verbose output.
+        use_smb: Whether to use SMB mount point as prefix for paths.
+
+    Returns:
+        Initialized YoutubeTrailerScraper instance.
+
+    Raises:
+        SystemExit: If configuration loading fails (exits with code 2).
+    """
     try:
-        # Instantiate the scraper (loads .env file)
-        if args.verbose:
+        if verbose:
             print_message("Loading configuration from .env file...", INFO)
 
-        scraper = YoutubeTrailerScraper()
+        scraper = YoutubeTrailerScraper(use_smb=use_smb)
 
-        if args.verbose:
+        if verbose:
+            smb_status = (
+                f"{scraper.smb_mount_point} (enabled)"
+                if scraper.use_smb_mount
+                else (scraper.smb_mount_point or "Not configured")
+            )
             print_message(
                 f"Configuration loaded successfully:\n"
                 f"  - TMDB API configured: {bool(scraper.tmdb_api_key)}\n"
                 f"  - Movies paths: {len(scraper.movies_paths)}\n"
                 f"  - TV shows paths: {len(scraper.tvshows_paths)}\n"
-                f"  - SMB mount: {scraper.smb_mount_point or 'Not configured'}",
+                f"  - SMB mount: {smb_status}",
                 INFO,
             )
 
-        # pylint: disable=fixme
-        # TODO: Implement workflow
-        # 1. Scan for movies/TV shows without trailers
-        # 2. Search TMDB for trailers
-        # 3. Fallback to YouTube search if needed
-        # 4. Download trailers
-
-        print_message("YoutubeTrailerScraper executed successfully.", SUCCESS)
+        return scraper
 
     except FileNotFoundError as e:
         print_message(f"Configuration error: {e}", ERROR)
@@ -89,6 +100,81 @@ def _main() -> int:
     except ValueError as e:
         print_message(f"Configuration error: {e}", ERROR)
         sys.exit(2)
+
+
+def _scan_for_missing_trailers(scraper, verbose: bool):
+    """Scan for movies and TV shows without trailers.
+
+    Args:
+        scraper: YoutubeTrailerScraper instance.
+        verbose: Whether to print verbose output.
+
+    Returns:
+        Tuple of (movies_without_trailers, tvshows_without_trailers).
+    """
+    # Scan for movies without trailers
+    if verbose:
+        print_message("Scanning movie directories...", INFO)
+    movies_without_trailers = scraper.scan_for_movies_without_trailers()
+
+    # Scan for TV shows without trailers
+    if verbose:
+        print_message("Scanning TV show directories...", INFO)
+    tvshows_without_trailers = scraper.scan_for_tvshows_without_trailers()
+
+    return movies_without_trailers, tvshows_without_trailers
+
+
+def _display_scan_results(movies_without_trailers, tvshows_without_trailers):
+    """Display scan results and summary.
+
+    Args:
+        movies_without_trailers: List of movie directories without trailers.
+        tvshows_without_trailers: List of TV show directories without trailers.
+    """
+    # Display results
+    movies_result = format_scan_results("Movies Without Trailers", movies_without_trailers)
+    print_message(movies_result, INFO)
+
+    tvshows_result = format_scan_results("TV Shows Without Trailers", tvshows_without_trailers)
+    print_message(tvshows_result, INFO)
+
+    # Summary
+    total_missing = len(movies_without_trailers) + len(tvshows_without_trailers)
+    if total_missing == 0:
+        print_message("\n✓ All media have trailers!", SUCCESS)
+    else:
+        print_message(f"\n⚠ Scan complete: {total_missing} items missing trailers", WARNING)
+
+
+def _main() -> int:
+    """Command-line interface main function.
+
+    Exit codes:
+        0: Success
+        1: General error
+        2: Argument error
+
+    Raises:
+        SystemExit: On any error.
+    """
+    # Parse and validate arguments
+    args = _parse_and_validate_args()
+
+    try:
+        # Load scraper configuration
+        scraper = _load_scraper(args.verbose, args.use_smb)
+
+        # Scan for missing trailers
+        movies_without_trailers, tvshows_without_trailers = _scan_for_missing_trailers(
+            scraper, args.verbose
+        )
+
+        # Display results
+        _display_scan_results(movies_without_trailers, tvshows_without_trailers)
+
+        # Note: Steps 2-4 (TMDB search, YouTube fallback, download) will be implemented later
+
     except Exception as e:  # pylint: disable=broad-except
         print_message(f"An error occurred: {e}", ERROR)
         if args.verbose:

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Setup script for YoutubeTrailerScraper."""
-from pathlib import Path
 import importlib.util
+from pathlib import Path
 
-from setuptools import setup, find_packages  # pylint: disable=import-error
+from setuptools import find_packages, setup  # pylint: disable=import-error
 
 # Load the _about.py module from src layout
 spec = importlib.util.spec_from_file_location(

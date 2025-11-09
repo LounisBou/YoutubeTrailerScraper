@@ -97,6 +97,59 @@ def print_message(text: str, level: str = INFO) -> None:
     stream.flush()
 
 
+def format_scan_results(title: str, items: list, total_items: int = 0) -> str:
+    """Format scan results as a readable summary with optional list.
+
+    Creates a formatted output showing the scan results with a title,
+    separator line, and either a numbered list of items or a message
+    indicating all items have trailers.
+
+    Args:
+        title: Section title (e.g., "Movies Without Trailers").
+        items: List of Path objects or empty list.
+        total_items: Total number of items scanned. If 0, won't show percentage.
+
+    Returns:
+        Formatted string ready for printing.
+
+    Example:
+        >>> from pathlib import Path
+        >>> items = [Path("/movies/Movie A"), Path("/movies/Movie B")]
+        >>> print(format_scan_results("Movies Without Trailers", items, 10))
+        Movies Without Trailers:
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          1. Movie A
+          2. Movie B
+
+        Found 2 movies without trailers (20.0% of total)
+    """
+    separator = "━" * 44
+    lines = [f"\n{title}:", separator]
+
+    if not items:
+        lines.append("  ✓ All items have trailers")
+    else:
+        for idx, item in enumerate(items, 1):
+            # Extract directory name from Path object
+            item_name = item.name if hasattr(item, "name") else str(item)
+            lines.append(f"  {idx}. {item_name}")
+
+    lines.append("")  # Empty line before summary
+
+    # Build summary line
+    count = len(items)
+    item_type = title.split()[0].lower()  # Extract "movies" or "tv"
+    summary = f"Found {count} {item_type} without trailers"
+
+    if total_items > 0 and count > 0:
+        percentage = (count / total_items) * 100
+        summary += f" ({percentage:.1f}% of total)"
+
+    lines.append(summary)
+
+    return "\n".join(lines)
+
+
 def parse_args() -> argparse.Namespace:
     """
     Parse command-line arguments.
@@ -166,6 +219,7 @@ __all__ = [
     "SUCCESS",
     "PRINT_LEVELS_COLORS",
     "print_message",
+    "format_scan_results",
     "parse_args",
     "check_args",
     "set_default_args_values",

@@ -97,6 +97,7 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 disallow_untyped_defs = false
 ignore_missing_imports = true  # third‑party libs may lack stubs
+disable_error_code = ["import-untyped"]  # suppress warnings for imports without type stubs
 show_error_context = true
 pretty = true
 
