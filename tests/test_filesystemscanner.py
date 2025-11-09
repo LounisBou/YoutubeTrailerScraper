@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """Tests for FileSystemScanner class."""
 
+from unittest.mock import Mock, patch
+
 import pytest
 
 from youtubetrailerscraper.filesystemscanner import FileSystemScanner
@@ -87,6 +89,28 @@ class TestFileSystemScannerHasVideoFiles:
             (video_dir / f"movie{ext}").write_text("fake video")
             assert scanner.has_video_files(video_dir) is True
 
+    def test_has_video_files_permission_error(self, tmp_path):
+        """Test has_video_files handles PermissionError gracefully."""
+        scanner = FileSystemScanner()
+        video_dir = tmp_path / "restricted"
+        video_dir.mkdir()
+
+        # Mock Path.iterdir to raise PermissionError
+        with patch.object(
+            type(video_dir), "iterdir", side_effect=PermissionError("Access denied")
+        ):
+            assert scanner.has_video_files(video_dir) is False
+
+    def test_has_video_files_os_error(self, tmp_path):
+        """Test has_video_files handles OSError gracefully."""
+        scanner = FileSystemScanner()
+        video_dir = tmp_path / "broken"
+        video_dir.mkdir()
+
+        # Mock Path.iterdir to raise OSError
+        with patch.object(type(video_dir), "iterdir", side_effect=OSError("Disk error")):
+            assert scanner.has_video_files(video_dir) is False
+
 
 class TestFileSystemScannerHasSubdirectoriesWithVideos:
     """Tests for has_subdirectories_with_videos method."""
@@ -117,6 +141,26 @@ class TestFileSystemScannerHasSubdirectoriesWithVideos:
         parent = tmp_path / "empty"
         parent.mkdir()
         assert scanner.has_subdirectories_with_videos(parent) is False
+
+    def test_has_subdirectories_with_videos_permission_error(self, tmp_path):
+        """Test has_subdirectories_with_videos handles PermissionError gracefully."""
+        scanner = FileSystemScanner()
+        parent = tmp_path / "restricted"
+        parent.mkdir()
+
+        # Mock Path.iterdir to raise PermissionError
+        with patch.object(type(parent), "iterdir", side_effect=PermissionError("Access denied")):
+            assert scanner.has_subdirectories_with_videos(parent) is False
+
+    def test_has_subdirectories_with_videos_os_error(self, tmp_path):
+        """Test has_subdirectories_with_videos handles OSError gracefully."""
+        scanner = FileSystemScanner()
+        parent = tmp_path / "broken"
+        parent.mkdir()
+
+        # Mock Path.iterdir to raise OSError
+        with patch.object(type(parent), "iterdir", side_effect=OSError("Disk error")):
+            assert scanner.has_subdirectories_with_videos(parent) is False
 
 
 class TestFileSystemScannerScanDirectories:
@@ -213,6 +257,116 @@ class TestFileSystemScannerScanDirectories:
 
         assert results1 == results2
         assert len(results2) == 1  # Only movie1, not movie2
+
+    def test_scan_cache_expiry(self, tmp_path, monkeypatch):
+        """Test that cache expires after TTL."""
+        import time
+
+        scanner = FileSystemScanner(cache_ttl=1)  # 1 second TTL
+
+        movie1 = tmp_path / "Movie1"
+        movie1.mkdir()
+        (movie1 / "movie.mp4").write_text("fake video")
+
+        # First scan
+        results1 = scanner.scan_directories(
+            [tmp_path], filter_func=scanner.has_video_files, filter_name="expiry_test"
+        )
+        assert len(results1) == 1
+
+        # Add a new movie
+        movie2 = tmp_path / "Movie2"
+        movie2.mkdir()
+        (movie2 / "movie.mkv").write_text("fake video")
+
+        # Mock time to simulate cache expiry
+        original_time = time.time
+        monkeypatch.setattr(time, "time", lambda: original_time() + 2)
+
+        # Scan again - cache should be expired
+        results2 = scanner.scan_directories(
+            [tmp_path], filter_func=scanner.has_video_files, filter_name="expiry_test"
+        )
+        assert len(results2) == 2  # Should pick up both movies
+
+    def test_scan_with_max_results(self, tmp_path):
+        """Test scanning with max_results limit."""
+        scanner = FileSystemScanner()
+
+        # Create 5 movies
+        for i in range(5):
+            movie = tmp_path / f"Movie{i}"
+            movie.mkdir()
+            (movie / "movie.mp4").write_text("fake video")
+
+        # Scan with max_results=3
+        results = scanner.scan_directories(
+            [tmp_path],
+            filter_func=scanner.has_video_files,
+            filter_name="max_test",
+            max_results=3,
+        )
+
+        assert len(results) == 3
+
+    def test_scan_with_max_results_multiple_paths(self, tmp_path):
+        """Test max_results works across multiple paths."""
+        scanner = FileSystemScanner()
+
+        # Create two paths with 3 movies each
+        path1 = tmp_path / "disk1"
+        path1.mkdir()
+        for i in range(3):
+            movie = path1 / f"Movie{i}"
+            movie.mkdir()
+            (movie / "movie.mp4").write_text("fake video")
+
+        path2 = tmp_path / "disk2"
+        path2.mkdir()
+        for i in range(3):
+            movie = path2 / f"Movie{i}"
+            movie.mkdir()
+            (movie / "movie.mp4").write_text("fake video")
+
+        # Scan with max_results=4 - should stop after 4 total
+        results = scanner.scan_directories(
+            [path1, path2],
+            filter_func=scanner.has_video_files,
+            filter_name="max_multi_test",
+            max_results=4,
+        )
+
+        assert len(results) == 4
+
+    def test_scan_permission_error(self, tmp_path):
+        """Test scan_directories handles PermissionError gracefully."""
+        scanner = FileSystemScanner()
+        restricted = tmp_path / "restricted"
+        restricted.mkdir()
+
+        # Mock Path.iterdir to raise PermissionError
+        with patch.object(
+            type(restricted), "iterdir", side_effect=PermissionError("Access denied")
+        ):
+            # Should handle error and return empty list
+            results = scanner.scan_directories(
+                [restricted], filter_func=scanner.has_video_files, filter_name="perm_test"
+            )
+            assert results == []
+
+    def test_scan_os_error(self, tmp_path):
+        """Test scan_directories handles OSError gracefully."""
+        scanner = FileSystemScanner()
+        broken = tmp_path / "broken"
+        broken.mkdir()
+
+        # Mock Path.iterdir to raise OSError
+        with patch.object(type(broken), "iterdir", side_effect=OSError("Disk error")):
+            # Should handle error and return empty list
+            results = scanner.scan_directories(
+                [broken], filter_func=scanner.has_video_files, filter_name="os_test"
+            )
+            assert results == []
 
 
 class TestFileSystemScannerClearCache:  # pylint: disable=too-few-public-methods
