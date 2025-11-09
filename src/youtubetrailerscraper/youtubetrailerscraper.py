@@ -66,6 +66,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         self.use_smb_mount: bool = use_smb
         self.youtube_search_url: str = ""
         self.default_search_query_format: str = ""
+        self.scan_sample_size: int | None = None
 
         # Set up logger
         self.logger = logger or logging.getLogger(__name__)
@@ -144,6 +145,20 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             "DEFAULT_SEARCH_QUERY_FORMAT", default="{title} {year} bande annonce"
         )
 
+        # Load scan sample size
+        scan_sample_str = self._get_env_var("SCAN_SAMPLE_SIZE", default="")
+        if scan_sample_str:
+            try:
+                self.scan_sample_size = int(scan_sample_str)
+                self.logger.debug("Scan sample size set to: %d", self.scan_sample_size)
+            except ValueError:
+                self.logger.warning(
+                    "Invalid SCAN_SAMPLE_SIZE value '%s', ignoring", scan_sample_str
+                )
+                self.scan_sample_size = None
+        else:
+            self.scan_sample_size = None
+
     def _get_env_var(self, key: str, required: bool = False, default: str = "") -> str:
         """
         Get environment variable with error handling
@@ -221,12 +236,15 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
 
         return prefixed_paths
 
-    def scan_for_movies_without_trailers(self) -> list[Path]:
+    def scan_for_movies_without_trailers(self, use_sample: bool = False) -> list[Path]:
         """Scan for movies without trailers across all configured movie directories.
 
         Uses the MovieScanner class to scan all directories specified in the
         MOVIES_PATHS environment variable. Returns a list of movie directories
         that are missing trailer files.
+
+        Args:
+            use_sample: If True and SCAN_SAMPLE_SIZE is set, limits scan to sample size.
 
         Returns:
             List of Path objects representing movie directories without trailers.
@@ -236,17 +254,25 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             >>> scraper = YoutubeTrailerScraper()
             >>> missing = scraper.scan_for_movies_without_trailers()
             >>> print(f"Found {len(missing)} movies without trailers")
+            >>> # Sample mode
+            >>> sample = scraper.scan_for_movies_without_trailers(use_sample=True)
         """
         if not self.movies_paths:
             self.logger.debug("No movie paths configured, skipping movie scan")
             return []
+
+        max_results = self.scan_sample_size if use_sample else None
+        if max_results:
+            self.logger.info("Sample mode: scanning up to %d movies", max_results)
 
         self.logger.debug("Scanning %d movie directories...", len(self.movies_paths))
         for path in self.movies_paths:
             self.logger.debug("  - %s", path)
 
         scanner = MovieScanner()
-        missing_trailers = scanner.find_missing_trailers(self.movies_paths)
+        missing_trailers = scanner.find_missing_trailers(
+            self.movies_paths, max_results=max_results
+        )
 
         self.logger.info("Found %d movies without trailers", len(missing_trailers))
         for movie_path in missing_trailers:
@@ -254,16 +280,15 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
 
         return missing_trailers
 
-    def scan_for_tvshows_without_trailers(self) -> list[Path]:
+    def scan_for_tvshows_without_trailers(self, use_sample: bool = False) -> list[Path]:
         """Scan for TV shows without trailers across all configured TV show directories.
 
         Uses the TVShowScanner class to scan all directories specified in the
         TVSHOWS_PATHS environment variable. Returns a list of TV show directories
         that are missing trailer files.
 
-        Note:
-            TVShowScanner is currently a skeleton implementation and will return
-            an empty list until fully implemented in a future step.
+        Args:
+            use_sample: If True and SCAN_SAMPLE_SIZE is set, limits scan to sample size.
 
         Returns:
             List of Path objects representing TV show directories without trailers.
@@ -273,17 +298,25 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             >>> scraper = YoutubeTrailerScraper()
             >>> missing = scraper.scan_for_tvshows_without_trailers()
             >>> print(f"Found {len(missing)} TV shows without trailers")
+            >>> # Sample mode
+            >>> sample = scraper.scan_for_tvshows_without_trailers(use_sample=True)
         """
         if not self.tvshows_paths:
             self.logger.debug("No TV show paths configured, skipping TV show scan")
             return []
+
+        max_results = self.scan_sample_size if use_sample else None
+        if max_results:
+            self.logger.info("Sample mode: scanning up to %d TV shows", max_results)
 
         self.logger.debug("Scanning %d TV show directories...", len(self.tvshows_paths))
         for path in self.tvshows_paths:
             self.logger.debug("  - %s", path)
 
         scanner = TVShowScanner()
-        missing_trailers = scanner.find_missing_trailers(self.tvshows_paths)
+        missing_trailers = scanner.find_missing_trailers(
+            self.tvshows_paths, max_results=max_results
+        )
 
         self.logger.info("Found %d TV shows without trailers", len(missing_trailers))
         for tvshow_path in missing_trailers:

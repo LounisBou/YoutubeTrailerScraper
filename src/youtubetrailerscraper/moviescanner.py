@@ -72,7 +72,7 @@ class MovieScanner:
         self.fs_scanner = fs_scanner or FileSystemScanner()
         logger.debug("MovieScanner initialized with pattern: %s", trailer_pattern)
 
-    def scan(self, paths: List[Path]) -> List[Path]:
+    def scan(self, paths: List[Path], max_results: Optional[int] = None) -> List[Path]:
         """Scan multiple directory paths for movie folders.
 
         Recursively scans the provided paths to find all movie directories.
@@ -85,6 +85,7 @@ class MovieScanner:
 
         Args:
             paths: List of directory paths to scan for movies. Can be Path objects or strings.
+            max_results: Maximum number of results to return. If None, returns all results.
 
         Returns:
             List of Path objects representing movie directories found.
@@ -94,10 +95,15 @@ class MovieScanner:
         """
         # Delegate to FileSystemScanner with movie-specific filter
         return self.fs_scanner.scan_directories(
-            paths, filter_func=self.fs_scanner.has_video_files, filter_name="movie_scan"
+            paths,
+            filter_func=self.fs_scanner.has_video_files,
+            filter_name="movie_scan",
+            max_results=max_results,
         )
 
-    def find_missing_trailers(self, paths: List[Path]) -> List[Path]:
+    def find_missing_trailers(
+        self, paths: List[Path], max_results: Optional[int] = None
+    ) -> List[Path]:
         """Find movie directories that are missing trailer files.
 
         Scans the provided paths for movie directories and identifies which ones
@@ -108,6 +114,7 @@ class MovieScanner:
 
         Args:
             paths: List of directory paths to scan for movies with missing trailers.
+            max_results: Maximum number of movie directories to scan. If None, scans all.
 
         Returns:
             List of Path objects representing movie directories without trailers.
@@ -119,12 +126,14 @@ class MovieScanner:
             >>> scanner = MovieScanner()
             >>> missing = scanner.find_missing_trailers([Path("/movies")])
             >>> print(f"Found {len(missing)} movies without trailers")
+            >>> # Sample mode - scan only first 100 movies
+            >>> sample = scanner.find_missing_trailers([Path("/movies")], max_results=100)
         """
         if not paths:
             raise ValueError("Paths list cannot be empty")
 
         # First, find all movie directories using FileSystemScanner
-        movie_dirs = self.scan(paths)
+        movie_dirs = self.scan(paths, max_results=max_results)
 
         missing_trailers = []
 
