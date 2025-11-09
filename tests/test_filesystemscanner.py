@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """Tests for FileSystemScanner class."""
 
-from unittest.mock import Mock, patch
+import time
+from unittest.mock import patch
 
 import pytest
 
@@ -260,8 +261,6 @@ class TestFileSystemScannerScanDirectories:
 
     def test_scan_cache_expiry(self, tmp_path, monkeypatch):
         """Test that cache expires after TTL."""
-        import time
-
         scanner = FileSystemScanner(cache_ttl=1)  # 1 second TTL
 
         movie1 = tmp_path / "Movie1"

@@ -2,14 +2,12 @@
 # -*- coding: utf-8 -*-
 """Tests for YoutubeDownloader class."""
 
-from pathlib import Path
-
 import pytest
 
 from youtubetrailerscraper.youtubedownloader import YoutubeDownloader
 
 
-class TestYoutubeDownloaderInit:
+class TestYoutubeDownloaderInit:  # pylint: disable=too-few-public-methods
     """Tests for YoutubeDownloader initialization."""
 
     def test_default_initialization(self):

@@ -3,11 +3,7 @@
 """Tests for the logger module."""
 
 import logging
-import os
 import sys
-from io import StringIO
-
-import pytest
 
 from youtubetrailerscraper.logger import ColoredFormatter, setup_logger
 

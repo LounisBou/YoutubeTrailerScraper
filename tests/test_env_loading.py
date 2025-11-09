@@ -98,6 +98,23 @@ def test_env_loading_invalid_path_list():
         os.unlink(env_file)
 
 
+def test_env_loading_path_list_not_list_type():
+    """Test that ValueError is raised when path list evaluates to non-list type."""
+    # Create a temporary .env file with a dict instead of list
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS={"path": "/movies/"}\n')  # Dict instead of list
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        env_file = f.name
+
+    try:
+        with pytest.raises(ValueError, match="PATHS must be a Python list"):
+            YoutubeTrailerScraper(env_file=env_file)
+    finally:
+        os.unlink(env_file)
+
+
 def test_env_loading_missing_file():
     """Test that FileNotFoundError is raised when .env file doesn't exist."""
     with pytest.raises(FileNotFoundError, match="Environment file not found"):
@@ -245,7 +262,7 @@ def test_scan_for_movies_without_trailers_empty_paths():
     try:
         scraper = YoutubeTrailerScraper(env_file=env_file)
         results = scraper.scan_for_movies_without_trailers()
-        assert results == []
+        assert not results
     finally:
         os.unlink(env_file)
 
@@ -288,7 +305,7 @@ def test_scan_for_tvshows_without_trailers_empty_paths():
     try:
         scraper = YoutubeTrailerScraper(env_file=env_file)
         results = scraper.scan_for_tvshows_without_trailers()
-        assert results == []
+        assert not results
     finally:
         os.unlink(env_file)
 
@@ -317,5 +334,40 @@ def test_scan_for_tvshows_with_sample_mode(tmp_path):
         results = scraper.scan_for_tvshows_without_trailers(use_sample=True)
         # Should only return 3 TV shows (sample size)
         assert len(results) == 3
+    finally:
+        os.unlink(env_file)
+
+
+def test_clear_cache():
+    """Test the clear_cache method."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+        # Just verify the method can be called without errors
+        scraper.clear_cache()
+    finally:
+        os.unlink(env_file)
+
+
+def test_search_for_movie_trailer():
+    """Test the search_for_movie_trailer method."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+        # Test the method returns empty list (TODO stub implementation)
+        result = scraper.search_for_movie_trailer("Test Movie", 2020)
+        assert not result
     finally:
         os.unlink(env_file)

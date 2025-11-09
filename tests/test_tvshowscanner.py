@@ -293,9 +293,8 @@ class TestTVShowScannerIsTvShowDirectory:
 
         # Mock Path.iterdir to raise PermissionError
         with patch.object(type(tvshow), "iterdir", side_effect=PermissionError("Access denied")):
-            assert (
-                scanner._is_tvshow_directory(tvshow) is False
-            )  # pylint: disable=protected-access
+            # pylint: disable=protected-access
+            assert scanner._is_tvshow_directory(tvshow) is False
 
     def test_is_tvshow_directory_with_os_error(self, tmp_path):
         """Test _is_tvshow_directory handles OSError gracefully."""
@@ -305,6 +304,5 @@ class TestTVShowScannerIsTvShowDirectory:
 
         # Mock Path.iterdir to raise OSError
         with patch.object(type(tvshow), "iterdir", side_effect=OSError("Disk error")):
-            assert (
-                scanner._is_tvshow_directory(tvshow) is False
-            )  # pylint: disable=protected-access
+            # pylint: disable=protected-access
+            assert scanner._is_tvshow_directory(tvshow) is False
