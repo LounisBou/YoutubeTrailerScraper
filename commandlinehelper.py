@@ -97,7 +97,9 @@ def print_message(text: str, level: str = INFO) -> None:
     stream.flush()
 
 
-def format_scan_results(title: str, items: list, total_items: int = 0) -> str:
+def format_scan_results(
+    title: str, items: list, total_items: int = 0, verbose: bool = False
+) -> str:
     """Format scan results as a readable summary with optional list.
 
     Creates a formatted output showing the scan results with a title,
@@ -108,6 +110,7 @@ def format_scan_results(title: str, items: list, total_items: int = 0) -> str:
         title: Section title (e.g., "Movies Without Trailers").
         items: List of Path objects or empty list.
         total_items: Total number of items scanned. If 0, won't show percentage.
+        verbose: If True, show full paths. If False, show only directory names.
 
     Returns:
         Formatted string ready for printing.
@@ -130,9 +133,12 @@ def format_scan_results(title: str, items: list, total_items: int = 0) -> str:
         lines.append("  ✓ All items have trailers")
     else:
         for idx, item in enumerate(items, 1):
-            # Extract directory name from Path object
-            item_name = item.name if hasattr(item, "name") else str(item)
-            lines.append(f"  {idx}. {item_name}")
+            # Extract directory name or full path based on verbose flag
+            if verbose:
+                item_display = str(item)
+            else:
+                item_display = item.name if hasattr(item, "name") else str(item)
+            lines.append(f"  {idx}. {item_display}")
 
     lines.append("")  # Empty line before summary
 

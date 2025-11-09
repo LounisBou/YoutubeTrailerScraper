@@ -25,6 +25,7 @@ References:
 from __future__ import annotations
 
 import ast
+import logging
 import os
 from pathlib import Path
 from typing import Optional
@@ -38,7 +39,12 @@ from youtubetrailerscraper.tvshowscanner import TVShowScanner
 class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
     """Scan tvshows and movies folders, download trailer on youtube"""
 
-    def __init__(self, env_file: Optional[str] = None, use_smb: bool = False):
+    def __init__(
+        self,
+        env_file: Optional[str] = None,
+        use_smb: bool = False,
+        logger: Optional[logging.Logger] = None,
+    ):
         """
         Initialize YoutubeTrailerScraper
 
@@ -46,6 +52,8 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             env_file (str, optional): Path to .env file. Defaults to .env in current directory.
             use_smb (bool): Whether to use SMB mount point as prefix for paths. Can be
                 overridden by USE_SMB_MOUNT environment variable. Defaults to False.
+            logger (logging.Logger, optional): Logger instance for logging. If None, uses a
+                NullHandler (no logging output). Pass a configured logger to enable logging.
         """
         # Configuration attributes
         self.tmdb_api_key: str = ""
@@ -57,6 +65,12 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         self.use_smb_mount: bool = use_smb
         self.youtube_search_url: str = ""
         self.default_search_query_format: str = ""
+
+        # Set up logger
+        self.logger = logger or logging.getLogger(__name__)
+        if not logger:
+            # Add NullHandler to prevent "No handler found" warnings
+            self.logger.addHandler(logging.NullHandler())
 
         # Load environment variables
         self._load_environment_variables(env_file)
@@ -74,6 +88,8 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         """
         # Load .env file
         env_path = env_file or ".env"
+        self.logger.debug("Loading environment from: %s", env_path)
+
         if not Path(env_path).exists():
             raise FileNotFoundError(
                 f"Environment file not found: {env_path}. "
@@ -84,6 +100,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         load_dotenv(env_path, override=True)
 
         # Load TMDB API configuration
+        self.logger.debug("Loading TMDB API configuration...")
         self.tmdb_api_key = self._get_env_var("TMDB_API_KEY", required=True)
         self.tmdb_read_access_token = self._get_env_var("TMDB_READ_ACCESS_TOKEN", required=True)
         self.tmdb_api_base_url = self._get_env_var(
@@ -91,6 +108,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         )
 
         # Load SMB mount configuration
+        self.logger.debug("Loading SMB mount configuration...")
         self.smb_mount_point = self._get_env_var("SMB_MOUNT_POINT", default="")
         use_smb_env = self._get_env_var("USE_SMB_MOUNT", default="false").lower() == "true"
         # Environment variable overrides constructor parameter
@@ -98,6 +116,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             self.use_smb_mount = True
 
         # Load media paths
+        self.logger.debug("Loading media paths...")
         movies_paths_raw = self._parse_path_list(self._get_env_var("MOVIES_PATHS", required=True))
         tvshows_paths_raw = self._parse_path_list(
             self._get_env_var("TVSHOWS_PATHS", required=True)
@@ -105,11 +124,15 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
 
         # Apply SMB mount point prefix if enabled
         if self.use_smb_mount and self.smb_mount_point:
+            self.logger.debug("Applying SMB mount prefix: %s", self.smb_mount_point)
             self.movies_paths = self._apply_smb_prefix(movies_paths_raw)
             self.tvshows_paths = self._apply_smb_prefix(tvshows_paths_raw)
         else:
             self.movies_paths = movies_paths_raw
             self.tvshows_paths = tvshows_paths_raw
+
+        self.logger.debug("Loaded %d movie paths", len(self.movies_paths))
+        self.logger.debug("Loaded %d TV show paths", len(self.tvshows_paths))
 
         # Load optional configurations
         self.youtube_search_url = self._get_env_var(
@@ -214,10 +237,21 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             >>> print(f"Found {len(missing)} movies without trailers")
         """
         if not self.movies_paths:
+            self.logger.debug("No movie paths configured, skipping movie scan")
             return []
 
+        self.logger.debug("Scanning %d movie directories...", len(self.movies_paths))
+        for path in self.movies_paths:
+            self.logger.debug("  - %s", path)
+
         scanner = MovieScanner()
-        return scanner.find_missing_trailers(self.movies_paths)
+        missing_trailers = scanner.find_missing_trailers(self.movies_paths)
+
+        self.logger.info("Found %d movies without trailers", len(missing_trailers))
+        for movie_path in missing_trailers:
+            self.logger.debug("  - %s", movie_path)
+
+        return missing_trailers
 
     def scan_for_tvshows_without_trailers(self) -> list[Path]:
         """Scan for TV shows without trailers across all configured TV show directories.
@@ -240,10 +274,21 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             >>> print(f"Found {len(missing)} TV shows without trailers")
         """
         if not self.tvshows_paths:
+            self.logger.debug("No TV show paths configured, skipping TV show scan")
             return []
 
+        self.logger.debug("Scanning %d TV show directories...", len(self.tvshows_paths))
+        for path in self.tvshows_paths:
+            self.logger.debug("  - %s", path)
+
         scanner = TVShowScanner()
-        return scanner.find_missing_trailers(self.tvshows_paths)
+        missing_trailers = scanner.find_missing_trailers(self.tvshows_paths)
+
+        self.logger.info("Found %d TV shows without trailers", len(missing_trailers))
+        for tvshow_path in missing_trailers:
+            self.logger.debug("  - %s", tvshow_path)
+
+        return missing_trailers
 
     def search_for_movie_trailer(
         self,
