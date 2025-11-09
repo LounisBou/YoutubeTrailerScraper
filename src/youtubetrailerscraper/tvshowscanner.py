@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# pylint: disable=duplicate-code
 """TVShowScanner module for scanning TV show directories and detecting missing trailers.
 
 This module provides the TVShowScanner class which scans Plex TV show directories
@@ -25,11 +26,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
-from .filesystemscanner import FileSystemScanner
+from pymate import CacheIt
 
 logger = logging.getLogger(__name__)
+
+# Video file extensions to recognize
+VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".m4v", ".mov"}
 
 
 class TVShowScanner:
@@ -56,53 +60,74 @@ class TVShowScanner:
                 # No trailers directory - this will be detected
 
     Attributes:
-        trailer_subdir: The subdirectory name where trailers are stored
-                       (default: "trailers")
-        trailer_filename: The expected trailer filename for backward compatibility
-                         (default: "trailer.mp4"). Note: Actual detection now uses
-                         flexible pattern matching.
+        trailer_subdir: The subdirectory name where trailers are stored (default: "trailers")
         season_pattern: Pattern prefix to identify season directories (default: "season")
-        fs_scanner: FileSystemScanner instance for filesystem operations (injected dependency)
 
     Note:
-        Uses FileSystemScanner service with 24-hour TTL cache to avoid
-        redundant filesystem scans. The cache automatically expires after 24 hours.
+        All scan operations are cached with 24-hour TTL using CacheIt decorator.
+        Cache is persistent across program executions.
     """
 
-    def __init__(
-        self,
-        trailer_subdir: str = "trailers",
-        trailer_filename: str = "trailer.mp4",
-        season_pattern: str = "season",
-        fs_scanner: Optional[FileSystemScanner] = None,
-    ):
-        """Initialize TVShowScanner with trailer detection settings.
+    def __init__(self, trailer_subdir: str = "trailers", season_pattern: str = "season"):
+        """Initialize TVShowScanner with configuration options.
 
         Args:
-            trailer_subdir: Subdirectory name where trailers are stored. Defaults to "trailers".
-            trailer_filename: Expected trailer filename. Defaults to "trailer.mp4".
-            season_pattern: Pattern prefix to match season directories (case-insensitive).
-                Defaults to "season". Examples: "season", "s", "saison".
-            fs_scanner: FileSystemScanner instance for dependency injection.
-                If None, creates a new instance with default settings.
+            trailer_subdir: Subdirectory name for trailers. Defaults to "trailers".
+            season_pattern: Pattern prefix for season directories (case-insensitive).
+                          Defaults to "season".
         """
         self.trailer_subdir = trailer_subdir
-        self.trailer_filename = trailer_filename
         self.season_pattern = season_pattern.lower()
-        self.fs_scanner = fs_scanner or FileSystemScanner()
         logger.debug(
-            "TVShowScanner initialized with trailer path: %s/%s, season pattern: %s",
+            "TVShowScanner initialized (trailer_subdir: %s, season_pattern: %s)",
             trailer_subdir,
-            trailer_filename,
             season_pattern,
         )
 
-    def _is_tvshow_directory(self, directory: Path) -> bool:
-        """Check if a directory is a TV show directory.
+    @staticmethod
+    def _has_video_files(directory: Path) -> bool:
+        """Check if a directory contains any video files.
 
-        A directory is considered a TV show directory if it contains:
-        - Subdirectories matching season_pattern that contain video files, OR
-        - Any subdirectories with video files
+        Args:
+            directory: Directory path to check.
+
+        Returns:
+            True if directory contains at least one video file, False otherwise.
+        """
+        try:
+            return any(
+                f.suffix.lower() in VIDEO_EXTENSIONS for f in directory.iterdir() if f.is_file()
+            )
+        except (PermissionError, OSError) as e:
+            logger.warning("Error checking video files in %s: %s", directory, e)
+            return False
+
+    def _has_subdirectories_with_videos(self, directory: Path) -> bool:
+        """Check if a directory has subdirectories containing video files.
+
+        This is useful for detecting TV show directories which typically
+        have season subdirectories with video files.
+
+        Args:
+            directory: Directory path to check.
+
+        Returns:
+            True if any subdirectory contains video files, False otherwise.
+        """
+        try:
+            for subdir in directory.iterdir():
+                if subdir.is_dir() and self._has_video_files(subdir):
+                    return True
+            return False
+        except (PermissionError, OSError) as e:
+            logger.warning("Error checking subdirectories in %s: %s", directory, e)
+            return False
+
+    def _is_tvshow_directory(self, directory: Path) -> bool:
+        """Determine if a directory is a TV show directory.
+
+        A directory is considered a TV show directory if it contains
+        subdirectories matching the season_pattern with video files.
 
         Args:
             directory: Directory path to check.
@@ -111,47 +136,15 @@ class TVShowScanner:
             True if directory appears to be a TV show directory, False otherwise.
         """
         try:
-            # Check for season subdirectories with videos using the configured pattern
             for subdir in directory.iterdir():
                 if subdir.is_dir() and subdir.name.lower().startswith(self.season_pattern):
-                    if self.fs_scanner.has_video_files(subdir):
+                    if self._has_video_files(subdir):
                         return True
-
-            # Alternative: check for any subdirectories with video files
-            return self.fs_scanner.has_subdirectories_with_videos(directory)
-
-        except (PermissionError, OSError) as e:
-            logger.warning("Error checking if %s is a TV show directory: %s", directory, e)
+            # If we found season directories but no videos, still return False
             return False
-
-    def scan(self, paths: List[Path], max_results: Optional[int] = None) -> List[Path]:
-        """Scan multiple directory paths for TV show folders.
-
-        Recursively scans the provided paths to find all TV show directories.
-        A directory is considered a TV show directory if it contains season subdirectories
-        (directories starting with "Season") or subdirectories containing video files.
-
-        Note:
-            Results are cached with a 24-hour TTL to improve performance on repeated scans.
-            Uses FileSystemScanner service for actual filesystem operations.
-
-        Args:
-            paths: List of directory paths to scan for TV shows. Can be Path objects or strings.
-            max_results: Maximum number of results to return. If None, returns all results.
-
-        Returns:
-            List of Path objects representing TV show directories found.
-
-        Raises:
-            ValueError: If paths is empty or None.
-        """
-        # Delegate to FileSystemScanner with TV show-specific filter
-        return self.fs_scanner.scan_directories(
-            paths,
-            filter_func=self._is_tvshow_directory,
-            filter_name="tvshow_scan",
-            max_results=max_results,
-        )
+        except (PermissionError, OSError) as e:
+            logger.warning("Error checking if TV show directory %s: %s", directory, e)
+            return False
 
     def has_trailer(self, tvshow_dir: Path) -> bool:
         """Check if a TV show directory contains any trailer file.
@@ -164,11 +157,6 @@ class TVShowScanner:
 
         Returns:
             True if at least one trailer file is found, False otherwise.
-
-        Example:
-            >>> scanner = TVShowScanner()
-            >>> scanner.has_trailer(Path("/tvshows/Breaking Bad"))
-            True
         """
         trailer_dir = tvshow_dir / self.trailer_subdir
 
@@ -187,9 +175,8 @@ class TVShowScanner:
             logger.warning("Error checking for trailer in %s: %s", tvshow_dir, e)
             return False
 
-    def find_missing_trailers(
-        self, paths: List[Path], max_results: Optional[int] = None
-    ) -> List[Path]:
+    @CacheIt(max_duration=86400, backend="diskcache")  # 24 hour cache
+    def find_missing_trailers(self, paths: List[Path]) -> List[Path]:
         """Find TV show directories that are missing trailer files.
 
         Scans the provided paths for TV show directories and identifies which ones
@@ -198,11 +185,12 @@ class TVShowScanner:
         of file extension.
 
         Note:
-            Results are cached with a 24-hour TTL to improve performance on repeated scans.
+            Results are cached with a 24-hour TTL using CacheIt decorator.
+            The complete results list is cached - directory scanning AND
+            trailer detection.
 
         Args:
             paths: List of directory paths to scan for TV shows with missing trailers.
-            max_results: Maximum number of TV show directories to scan. If None, scans all.
 
         Returns:
             List of Path objects representing TV show directories without trailers.
@@ -214,26 +202,45 @@ class TVShowScanner:
             >>> scanner = TVShowScanner()
             >>> missing = scanner.find_missing_trailers([Path("/tvshows")])
             >>> print(f"Found {len(missing)} TV shows without trailers")
-            >>> # Sample mode - scan only first 100 TV shows
-            >>> sample = scanner.find_missing_trailers([Path("/tvshows")], max_results=100)
         """
         if not paths:
             raise ValueError("Paths list cannot be empty")
 
-        # First, find all TV show directories using FileSystemScanner
-        tvshow_dirs = self.scan(paths, max_results=max_results)
-
         missing_trailers = []
 
-        for tvshow_dir in tvshow_dirs:
-            # Check if any trailer exists (any file containing '-trailer' in trailers subdir)
-            if not self.has_trailer(tvshow_dir):
-                missing_trailers.append(tvshow_dir)
-                logger.debug("Missing trailer in: %s", tvshow_dir)
+        for base_path in paths:
+            if not base_path.exists():
+                logger.warning("Path does not exist: %s", base_path)
+                continue
+
+            if not base_path.is_dir():
+                logger.warning("Path is not a directory: %s", base_path)
+                continue
+
+            logger.info("Scanning path: %s", base_path)
+
+            try:
+                # Iterate through all subdirectories
+                for item in base_path.iterdir():
+                    if not item.is_dir():
+                        continue
+
+                    # Check if it's a TV show directory
+                    if not self._is_tvshow_directory(item):
+                        continue
+
+                    # Check if it has a trailer
+                    if not self.has_trailer(item):
+                        missing_trailers.append(item)
+                        logger.debug("Missing trailer in: %s", item)
+
+            except PermissionError:
+                logger.error("Permission denied accessing: %s", base_path)
+            except OSError as e:
+                logger.error("Error scanning %s: %s", base_path, e)
 
         logger.info(
-            "Found %d TV shows without trailers out of %d total TV shows",
+            "Found %d TV shows without trailers",
             len(missing_trailers),
-            len(tvshow_dirs),
         )
         return missing_trailers

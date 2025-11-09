@@ -2,8 +2,7 @@
 yt-dlp>=2024.10.0           # YouTube video downloader
 requests>=2.31.0            # HTTP client for TMDB API calls
 python-dotenv>=1.0.0        # Load environment variables from .env file
-cachetools>=5.3.0           # TTL-based caching for scan operations
-diskcache>=5.6.0            # Persistent disk-based cache for filesystem scans
+pymate>=1.0.0               # Caching and utility decorators
 
 # Test / Dev tools (optional for CI)
 pytest

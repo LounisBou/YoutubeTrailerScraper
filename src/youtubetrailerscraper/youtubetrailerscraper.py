@@ -32,7 +32,6 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from youtubetrailerscraper.filesystemscanner import FileSystemScanner
 from youtubetrailerscraper.moviescanner import MovieScanner
 from youtubetrailerscraper.tvshowscanner import TVShowScanner
 
@@ -261,18 +260,17 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             self.logger.debug("No movie paths configured, skipping movie scan")
             return []
 
-        max_results = self.scan_sample_size if use_sample else None
-        if max_results:
-            self.logger.info("Sample mode: scanning up to %d movies", max_results)
+        if use_sample and self.scan_sample_size:
+            self.logger.warning(
+                "Sample mode requested but not supported with CacheIt. Scanning all movies."
+            )
 
         self.logger.debug("Scanning %d movie directories...", len(self.movies_paths))
         for path in self.movies_paths:
             self.logger.debug("  - %s", path)
 
         scanner = MovieScanner()
-        missing_trailers = scanner.find_missing_trailers(
-            self.movies_paths, max_results=max_results
-        )
+        missing_trailers = scanner.find_missing_trailers(self.movies_paths)
 
         self.logger.info("Found %d movies without trailers", len(missing_trailers))
         for movie_path in missing_trailers:
@@ -305,18 +303,17 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             self.logger.debug("No TV show paths configured, skipping TV show scan")
             return []
 
-        max_results = self.scan_sample_size if use_sample else None
-        if max_results:
-            self.logger.info("Sample mode: scanning up to %d TV shows", max_results)
+        if use_sample and self.scan_sample_size:
+            self.logger.warning(
+                "Sample mode requested but not supported with CacheIt. Scanning all TV shows."
+            )
 
         self.logger.debug("Scanning %d TV show directories...", len(self.tvshows_paths))
         for path in self.tvshows_paths:
             self.logger.debug("  - %s", path)
 
         scanner = TVShowScanner()
-        missing_trailers = scanner.find_missing_trailers(
-            self.tvshows_paths, max_results=max_results
-        )
+        missing_trailers = scanner.find_missing_trailers(self.tvshows_paths)
 
         self.logger.info("Found %d TV shows without trailers", len(missing_trailers))
         for tvshow_path in missing_trailers:
@@ -344,15 +341,16 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         return []
 
     def clear_cache(self) -> None:
-        """Clear the filesystem scan cache.
+        """Clear the cache for all scanners.
 
         This removes all cached scan results, forcing a fresh scan
         on the next execution. Useful when media libraries have been
         updated and you want to bypass the cache.
 
-        The cache is stored in .cache/filesystemscanner/ directory.
+        The cache is stored in __cacheit__/ directory.
         """
-        self.logger.info("Clearing filesystem scan cache...")
-        scanner = FileSystemScanner()
-        scanner.clear_cache()
+        self.logger.info("Clearing cache...")
+        # Clear cache for both scanners
+        MovieScanner().find_missing_trailers.clear_cache()
+        TVShowScanner().find_missing_trailers.clear_cache()
         self.logger.info("Cache cleared successfully")
