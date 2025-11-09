@@ -360,7 +360,7 @@ class TestTVShowScannerFindMissingTrailers:
         assert len(missing) == 0  # All have trailers with '-trailer' in name
 
     def test_flexible_trailer_detection_without_trailer_keyword(self, tmp_path):
-        """Test that files without '-trailer' keyword are not considered trailers."""
+        """Test that files without 'trailer' keyword are not considered trailers."""
         scanner = TVShowScanner()
 
         # Create TV shows with extra files but no actual trailer
@@ -375,6 +375,41 @@ class TestTVShowScannerFindMissingTrailers:
 
         missing = scanner.find_missing_trailers([tmp_path])
         assert len(missing) == 1  # Should be missing trailer
+
+    def test_flexible_trailer_detection_without_dash(self, tmp_path):
+        """Test that trailers without dash separator are also detected."""
+        scanner = TVShowScanner()
+
+        # Create TV shows with trailers without dash
+        tvshow1 = tmp_path / "Show 1"
+        tvshow1.mkdir()
+        season1 = tvshow1 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow1 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "ShowTrailer.mp4").write_text("fake trailer")  # No dash
+
+        tvshow2 = tmp_path / "Show 2"
+        tvshow2.mkdir()
+        season1 = tvshow2 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow2 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "Show Trailer.mkv").write_text("fake trailer")  # Space
+
+        tvshow3 = tmp_path / "Show 3"
+        tvshow3.mkdir()
+        season1 = tvshow3 / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow3 / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "trailer.mp4").write_text("fake trailer")  # Just "trailer"
+
+        missing = scanner.find_missing_trailers([tmp_path])
+        assert len(missing) == 0  # All have trailers despite no dash
 
 
 class TestTVShowScannerHasTrailer:
@@ -447,7 +482,7 @@ class TestTVShowScannerHasTrailer:
         assert scanner.has_trailer(tvshow_dir) is False
 
     def test_has_trailer_false_without_trailer_keyword(self, tmp_path):
-        """Test has_trailer returns False for files without '-trailer' keyword."""
+        """Test has_trailer returns False for files without 'trailer' keyword."""
         scanner = TVShowScanner()
         tvshow_dir = tmp_path / "Show"
         tvshow_dir.mkdir()
@@ -459,6 +494,34 @@ class TestTVShowScannerHasTrailer:
         (trailers_dir / "show-preview.mp4").write_text("fake preview")
 
         assert scanner.has_trailer(tvshow_dir) is False
+
+    def test_has_trailer_true_without_dash(self, tmp_path):
+        """Test has_trailer returns True for trailers without dash separator."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "ShowTrailer.mp4").write_text("fake trailer")
+
+        assert scanner.has_trailer(tvshow_dir) is True
+
+    def test_has_trailer_true_just_trailer(self, tmp_path):
+        """Test has_trailer returns True for file named just 'trailer'."""
+        scanner = TVShowScanner()
+        tvshow_dir = tmp_path / "Show"
+        tvshow_dir.mkdir()
+        season1 = tvshow_dir / "Season 01"
+        season1.mkdir()
+        (season1 / "episode1.mp4").write_text("fake video")
+        trailers_dir = tvshow_dir / "trailers"
+        trailers_dir.mkdir()
+        (trailers_dir / "trailer.mp4").write_text("fake trailer")
+
+        assert scanner.has_trailer(tvshow_dir) is True
 
     def test_has_trailer_handles_permission_error(self, tmp_path):
         """Test has_trailer handles permission errors gracefully."""

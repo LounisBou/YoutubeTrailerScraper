@@ -19,8 +19,8 @@ def temp_movie_structure(tmp_path):
             Movie With Trailer (2020)/
                 Movie With Trailer (2020).mp4
                 Movie With Trailer (2020)-trailer.mp4
-            Movie Without Trailer (2021)/
-                Movie Without Trailer (2021).mp4
+            Movie Missing Preview (2021)/
+                Movie Missing Preview (2021).mp4
             Movie With Multiple Videos (2022)/
                 Movie With Multiple Videos (2022).mkv
                 Movie With Multiple Videos (2022)-deleted.mp4
@@ -37,9 +37,9 @@ def temp_movie_structure(tmp_path):
     (movie1 / "Movie With Trailer (2020)-trailer.mp4").touch()
 
     # Movie without trailer
-    movie2 = movies_dir / "Movie Without Trailer (2021)"
+    movie2 = movies_dir / "Movie Missing Preview (2021)"
     movie2.mkdir()
-    (movie2 / "Movie Without Trailer (2021).mp4").touch()
+    (movie2 / "Movie Missing Preview (2021).mp4").touch()
 
     # Movie with multiple video files
     movie3 = movies_dir / "Movie With Multiple Videos (2022)"
@@ -131,7 +131,7 @@ class TestMovieScannerScan:
 
         movie_names = {d.name for d in movie_dirs}
         assert "Movie With Trailer (2020)" in movie_names
-        assert "Movie Without Trailer (2021)" in movie_names
+        assert "Movie Missing Preview (2021)" in movie_names
         assert "Movie With Multiple Videos (2022)" in movie_names
         assert "Empty Directory" not in movie_names
 
@@ -206,7 +206,7 @@ class TestMovieScannerFindMissingTrailers:
         assert len(missing) == 2
 
         movie_names = {d.name for d in missing}
-        assert "Movie Without Trailer (2021)" in movie_names
+        assert "Movie Missing Preview (2021)" in movie_names
         assert "Movie With Multiple Videos (2022)" in movie_names
         assert "Movie With Trailer (2020)" not in movie_names
 
@@ -361,7 +361,7 @@ class TestMovieScannerFindMissingTrailers:
         assert len(missing) == 0  # All have trailers with '-trailer' in name
 
     def test_flexible_trailer_detection_without_trailer_keyword(self, tmp_path):
-        """Test that files without '-trailer' keyword are not considered trailers."""
+        """Test that files without 'trailer' keyword are not considered trailers."""
         scanner = MovieScanner()
 
         # Create movies with extra files but no actual trailer
@@ -377,6 +377,29 @@ class TestMovieScannerFindMissingTrailers:
 
         missing = scanner.find_missing_trailers([tmp_path])
         assert len(missing) == 2  # Both should be missing trailers
+
+    def test_flexible_trailer_detection_without_dash(self, tmp_path):
+        """Test that trailers without dash separator are also detected."""
+        scanner = MovieScanner()
+
+        # Create movies with trailers without dash
+        movie1 = tmp_path / "Movie 1"
+        movie1.mkdir()
+        (movie1 / "Movie 1.mp4").touch()
+        (movie1 / "MovieTrailer.mp4").touch()  # No dash
+
+        movie2 = tmp_path / "Movie 2"
+        movie2.mkdir()
+        (movie2 / "Movie 2.mp4").touch()
+        (movie2 / "Movie Trailer.mkv").touch()  # Space instead of dash
+
+        movie3 = tmp_path / "Movie 3"
+        movie3.mkdir()
+        (movie3 / "Movie 3.mp4").touch()
+        (movie3 / "trailer.mp4").touch()  # Just "trailer"
+
+        missing = scanner.find_missing_trailers([tmp_path])
+        assert len(missing) == 0  # All have trailers despite no dash
 
 
 class TestMovieScannerHasTrailer:
@@ -422,7 +445,7 @@ class TestMovieScannerHasTrailer:
         assert scanner.has_trailer(movie_dir) is False
 
     def test_has_trailer_false_without_trailer_keyword(self, tmp_path):
-        """Test has_trailer returns False for files without '-trailer' keyword."""
+        """Test has_trailer returns False for files without 'trailer' keyword."""
         scanner = MovieScanner()
         movie_dir = tmp_path / "Movie"
         movie_dir.mkdir()
@@ -430,6 +453,26 @@ class TestMovieScannerHasTrailer:
         (movie_dir / "Movie-preview.mp4").touch()
 
         assert scanner.has_trailer(movie_dir) is False
+
+    def test_has_trailer_true_without_dash(self, tmp_path):
+        """Test has_trailer returns True for trailers without dash separator."""
+        scanner = MovieScanner()
+        movie_dir = tmp_path / "Movie"
+        movie_dir.mkdir()
+        (movie_dir / "Movie.mp4").touch()
+        (movie_dir / "MovieTrailer.mp4").touch()
+
+        assert scanner.has_trailer(movie_dir) is True
+
+    def test_has_trailer_true_just_trailer(self, tmp_path):
+        """Test has_trailer returns True for file named just 'trailer'."""
+        scanner = MovieScanner()
+        movie_dir = tmp_path / "Movie"
+        movie_dir.mkdir()
+        (movie_dir / "Movie.mp4").touch()
+        (movie_dir / "trailer.mp4").touch()
+
+        assert scanner.has_trailer(movie_dir) is True
 
     def test_has_trailer_handles_permission_error(self, tmp_path):
         """Test has_trailer handles permission errors gracefully."""

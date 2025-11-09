@@ -4,7 +4,7 @@
 
 This module provides the MovieScanner class which scans Plex movie directories
 to identify movies that are missing trailer files. Trailers are detected as any file
-containing '-trailer' in the filename (case-insensitive), regardless of file extension
+containing 'trailer' in the filename (case-insensitive), regardless of file extension
 
 Example:
     Basic usage of MovieScanner:
@@ -36,7 +36,7 @@ class MovieScanner:
 
     This class scans Plex movie directory structures to identify which movies
     are missing trailer files. Each movie is expected to be in its own directory,
-    and trailers are detected as any file containing '-trailer' in the filename
+    and trailers are detected as any file containing 'trailer' in the filename
     (case-insensitive), regardless of file extension.
 
     Example directory structure:
@@ -44,7 +44,8 @@ class MovieScanner:
             The Matrix (1999)/
                 The Matrix (1999).mp4
                 The Matrix (1999)-trailer.mp4  # Trailer present
-                The Matrix-Trailer.mkv         # Also detected as trailer
+                The Matrix Trailer.mkv         # Also detected as trailer
+                MatrixTrailer.avi              # Also detected as trailer
             Inception (2010)/
                 Inception (2010).mp4
                 # No trailer - this will be detected
@@ -108,8 +109,8 @@ class MovieScanner:
     def has_trailer(self, movie_dir: Path) -> bool:
         """Check if a movie directory contains any trailer file.
 
-        A trailer file is any file in the directory that contains '-trailer' in its name,
-        regardless of file extension or exact naming pattern.
+        A trailer file is any file in the directory that contains 'trailer' in its name
+        (case-insensitive), regardless of file extension or exact naming pattern.
 
         Args:
             movie_dir: Path to the movie directory to check.
@@ -124,7 +125,7 @@ class MovieScanner:
         """
         try:
             for file_path in movie_dir.iterdir():
-                if file_path.is_file() and "-trailer" in file_path.name.lower():
+                if file_path.is_file() and "trailer" in file_path.name.lower():
                     logger.debug("Trailer found in: %s (%s)", movie_dir, file_path.name)
                     return True
             return False
@@ -139,7 +140,7 @@ class MovieScanner:
 
         Scans the provided paths for movie directories and identifies which ones
         do not contain a trailer file. A trailer file is any file containing
-        '-trailer' in its name (case-insensitive), regardless of file extension.
+        'trailer' in its name (case-insensitive), regardless of file extension.
 
         Note:
             Results are cached with a 24-hour TTL to improve performance on repeated scans.
