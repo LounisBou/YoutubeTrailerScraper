@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """Tests for TVShowScanner class."""
 
+from unittest.mock import patch
+
 import pytest
 
 from youtubetrailerscraper.tvshowscanner import TVShowScanner
@@ -278,3 +280,29 @@ class TestTVShowScannerFindMissingTrailers:
         nonexistent = tmp_path / "does_not_exist"
         results = scanner.find_missing_trailers([nonexistent])
         assert not results
+
+
+class TestTVShowScannerIsTvShowDirectory:
+    """Tests for _is_tvshow_directory method."""
+
+    def test_is_tvshow_directory_with_permission_error(self, tmp_path):
+        """Test _is_tvshow_directory handles PermissionError gracefully."""
+        scanner = TVShowScanner()
+        tvshow = tmp_path / "restricted"
+        tvshow.mkdir()
+
+        # Mock Path.iterdir to raise PermissionError
+        with patch.object(type(tvshow), "iterdir", side_effect=PermissionError("Access denied")):
+            # pylint: disable=protected-access
+            assert scanner._is_tvshow_directory(tvshow) is False
+
+    def test_is_tvshow_directory_with_os_error(self, tmp_path):
+        """Test _is_tvshow_directory handles OSError gracefully."""
+        scanner = TVShowScanner()
+        tvshow = tmp_path / "broken"
+        tvshow.mkdir()
+
+        # Mock Path.iterdir to raise OSError
+        with patch.object(type(tvshow), "iterdir", side_effect=OSError("Disk error")):
+            # pylint: disable=protected-access
+            assert scanner._is_tvshow_directory(tvshow) is False

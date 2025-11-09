@@ -46,12 +46,6 @@ jobs:
         run: pytest -q
 
       
-      - name: Coverage (pytest)
-        run: pytest --cov=youtubetrailerscraper --cov-report=xml -q
+      - name: Coverage 100% (pytest)
+        run: pytest --cov=youtubetrailerscraper --cov-report=xml -q --cov-fail-under=100
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.xml
-          fail_ci_if_error: false
-      
