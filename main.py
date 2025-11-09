@@ -108,22 +108,23 @@ def _load_scraper(verbose: bool, use_smb: bool):
         sys.exit(2)
 
 
-def _scan_for_missing_trailers(scraper):
+def _scan_for_missing_trailers(scraper, use_sample: bool = False):
     """Scan for movies and TV shows without trailers.
 
     Args:
         scraper: YoutubeTrailerScraper instance.
+        use_sample: If True, use sample mode (limit to SCAN_SAMPLE_SIZE).
 
     Returns:
         Tuple of (movies_without_trailers, tvshows_without_trailers).
     """
     # Scan for movies without trailers (logger handles verbose output)
     print_message("Starting movie scan...", INFO)
-    movies_without_trailers = scraper.scan_for_movies_without_trailers()
+    movies_without_trailers = scraper.scan_for_movies_without_trailers(use_sample=use_sample)
 
     # Scan for TV shows without trailers (logger handles verbose output)
     print_message("Starting TV show scan...", INFO)
-    tvshows_without_trailers = scraper.scan_for_tvshows_without_trailers()
+    tvshows_without_trailers = scraper.scan_for_tvshows_without_trailers(use_sample=use_sample)
 
     return movies_without_trailers, tvshows_without_trailers
 
@@ -179,8 +180,24 @@ def _main() -> int:
             scraper.clear_cache()
             print_message("Cache cleared successfully.", SUCCESS)
 
+        # Show sample mode message if enabled
+        if args.scan_sample:
+            if scraper.scan_sample_size:
+                print_message(
+                    f"Sample mode enabled: scanning up to {scraper.scan_sample_size} "
+                    f"movies and {scraper.scan_sample_size} TV shows",
+                    INFO,
+                )
+            else:
+                print_message(
+                    "Warning: --scan-sample flag used but SCAN_SAMPLE_SIZE not set in .env",
+                    WARNING,
+                )
+
         # Scan for missing trailers
-        movies_without_trailers, tvshows_without_trailers = _scan_for_missing_trailers(scraper)
+        movies_without_trailers, tvshows_without_trailers = _scan_for_missing_trailers(
+            scraper, use_sample=args.scan_sample
+        )
 
         # Display results
         _display_scan_results(movies_without_trailers, tvshows_without_trailers, args.verbose)

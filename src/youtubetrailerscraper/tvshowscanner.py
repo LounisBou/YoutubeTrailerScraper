@@ -116,7 +116,7 @@ class TVShowScanner:
             logger.warning("Error checking if %s is a TV show directory: %s", directory, e)
             return False
 
-    def scan(self, paths: List[Path]) -> List[Path]:
+    def scan(self, paths: List[Path], max_results: Optional[int] = None) -> List[Path]:
         """Scan multiple directory paths for TV show folders.
 
         Recursively scans the provided paths to find all TV show directories.
@@ -129,6 +129,7 @@ class TVShowScanner:
 
         Args:
             paths: List of directory paths to scan for TV shows. Can be Path objects or strings.
+            max_results: Maximum number of results to return. If None, returns all results.
 
         Returns:
             List of Path objects representing TV show directories found.
@@ -138,10 +139,15 @@ class TVShowScanner:
         """
         # Delegate to FileSystemScanner with TV show-specific filter
         return self.fs_scanner.scan_directories(
-            paths, filter_func=self._is_tvshow_directory, filter_name="tvshow_scan"
+            paths,
+            filter_func=self._is_tvshow_directory,
+            filter_name="tvshow_scan",
+            max_results=max_results,
         )
 
-    def find_missing_trailers(self, paths: List[Path]) -> List[Path]:
+    def find_missing_trailers(
+        self, paths: List[Path], max_results: Optional[int] = None
+    ) -> List[Path]:
         """Find TV show directories that are missing trailer files.
 
         Scans the provided paths for TV show directories and identifies which ones
@@ -152,6 +158,7 @@ class TVShowScanner:
 
         Args:
             paths: List of directory paths to scan for TV shows with missing trailers.
+            max_results: Maximum number of TV show directories to scan. If None, scans all.
 
         Returns:
             List of Path objects representing TV show directories without trailers.
@@ -163,12 +170,14 @@ class TVShowScanner:
             >>> scanner = TVShowScanner()
             >>> missing = scanner.find_missing_trailers([Path("/tvshows")])
             >>> print(f"Found {len(missing)} TV shows without trailers")
+            >>> # Sample mode - scan only first 100 TV shows
+            >>> sample = scanner.find_missing_trailers([Path("/tvshows")], max_results=100)
         """
         if not paths:
             raise ValueError("Paths list cannot be empty")
 
         # First, find all TV show directories using FileSystemScanner
-        tvshow_dirs = self.scan(paths)
+        tvshow_dirs = self.scan(paths, max_results=max_results)
 
         missing_trailers = []
 

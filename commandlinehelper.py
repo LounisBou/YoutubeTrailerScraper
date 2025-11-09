@@ -188,6 +188,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Clear the filesystem scan cache before running",
     )
+    # Scan sample mode
+    args_parser.add_argument(
+        "--scan-sample",
+        action="store_true",
+        help="Scan a limited sample of media (size from SCAN_SAMPLE_SIZE env variable)",
+    )
     return args_parser.parse_args()
 
 

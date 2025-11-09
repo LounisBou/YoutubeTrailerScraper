@@ -162,6 +162,7 @@ class FileSystemScanner:
         paths: List[Path],
         filter_func: Callable[[Path], bool],
         filter_name: str = "custom",
+        max_results: Optional[int] = None,
     ) -> List[Path]:
         """Scan multiple directory paths and filter results.
 
@@ -173,6 +174,8 @@ class FileSystemScanner:
             paths: List of directory paths to scan.
             filter_func: Function that takes a Path and returns True if it should be included.
             filter_name: Name to identify this filter in cache (for cache key uniqueness).
+            max_results: Maximum number of results to return. If None, returns all results.
+                Useful for sampling mode to limit scan time.
 
         Returns:
             List of Path objects that passed the filter function.
@@ -184,6 +187,10 @@ class FileSystemScanner:
             >>> scanner = FileSystemScanner()
             >>> def is_movie(p): return scanner.has_video_files(p)
             >>> results = scanner.scan_directories([Path("/movies")], is_movie, "movie_filter")
+            >>> # Limit to 100 results
+            >>> sample = scanner.scan_directories(
+            ...     [Path("/movies")], is_movie, "movie_filter", max_results=100
+            ... )
         """
         if not paths:
             raise ValueError("Paths list cannot be empty")
@@ -221,10 +228,21 @@ class FileSystemScanner:
                         matching_dirs.append(item)
                         logger.debug("Found matching directory: %s", item)
 
+                        # Check if we've reached max_results limit
+                        if max_results and len(matching_dirs) >= max_results:
+                            logger.info(
+                                "Reached max_results limit (%d), stopping scan", max_results
+                            )
+                            break
+
             except PermissionError:
                 logger.error("Permission denied accessing: %s", base_path)
             except OSError as e:
                 logger.error("Error scanning %s: %s", base_path, e)
+
+            # Break outer loop if we've reached max_results
+            if max_results and len(matching_dirs) >= max_results:
+                break
 
         logger.info("Found %d matching directories", len(matching_dirs))
 
