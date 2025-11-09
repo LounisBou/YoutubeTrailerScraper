@@ -24,6 +24,7 @@ from commandlinehelper import (
     set_default_args_values,
 )
 from src.youtubetrailerscraper import YoutubeTrailerScraper
+from src.youtubetrailerscraper.logger import setup_logger
 
 
 def _parse_and_validate_args():
@@ -66,16 +67,21 @@ def _load_scraper(verbose: bool, use_smb: bool):
         use_smb: Whether to use SMB mount point as prefix for paths.
 
     Returns:
-        Initialized YoutubeTrailerScraper instance.
+        Tuple of (YoutubeTrailerScraper instance, logger instance).
 
     Raises:
         SystemExit: If configuration loading fails (exits with code 2).
     """
     try:
-        if verbose:
-            print_message("Loading configuration from .env file...", INFO)
+        print_message("Loading environment configuration...", INFO)
 
-        scraper = YoutubeTrailerScraper(use_smb=use_smb)
+        # Set up logger for the scraper
+        logger = setup_logger(verbose=verbose)
+
+        # Create scraper with logger
+        scraper = YoutubeTrailerScraper(use_smb=use_smb, logger=logger)
+
+        print_message("Configuration loaded successfully.", SUCCESS)
 
         if verbose:
             smb_status = (
@@ -84,7 +90,7 @@ def _load_scraper(verbose: bool, use_smb: bool):
                 else (scraper.smb_mount_point or "Not configured")
             )
             print_message(
-                f"Configuration loaded successfully:\n"
+                f"Details:\n"
                 f"  - TMDB API configured: {bool(scraper.tmdb_api_key)}\n"
                 f"  - Movies paths: {len(scraper.movies_paths)}\n"
                 f"  - TV shows paths: {len(scraper.tvshows_paths)}\n"
@@ -92,7 +98,7 @@ def _load_scraper(verbose: bool, use_smb: bool):
                 INFO,
             )
 
-        return scraper
+        return scraper, logger
 
     except FileNotFoundError as e:
         print_message(f"Configuration error: {e}", ERROR)
@@ -102,41 +108,43 @@ def _load_scraper(verbose: bool, use_smb: bool):
         sys.exit(2)
 
 
-def _scan_for_missing_trailers(scraper, verbose: bool):
+def _scan_for_missing_trailers(scraper):
     """Scan for movies and TV shows without trailers.
 
     Args:
         scraper: YoutubeTrailerScraper instance.
-        verbose: Whether to print verbose output.
 
     Returns:
         Tuple of (movies_without_trailers, tvshows_without_trailers).
     """
-    # Scan for movies without trailers
-    if verbose:
-        print_message("Scanning movie directories...", INFO)
+    # Scan for movies without trailers (logger handles verbose output)
+    print_message("Starting movie scan...", INFO)
     movies_without_trailers = scraper.scan_for_movies_without_trailers()
 
-    # Scan for TV shows without trailers
-    if verbose:
-        print_message("Scanning TV show directories...", INFO)
+    # Scan for TV shows without trailers (logger handles verbose output)
+    print_message("Starting TV show scan...", INFO)
     tvshows_without_trailers = scraper.scan_for_tvshows_without_trailers()
 
     return movies_without_trailers, tvshows_without_trailers
 
 
-def _display_scan_results(movies_without_trailers, tvshows_without_trailers):
+def _display_scan_results(movies_without_trailers, tvshows_without_trailers, verbose: bool):
     """Display scan results and summary.
 
     Args:
         movies_without_trailers: List of movie directories without trailers.
         tvshows_without_trailers: List of TV show directories without trailers.
+        verbose: If True, show full paths in output.
     """
     # Display results
-    movies_result = format_scan_results("Movies Without Trailers", movies_without_trailers)
+    movies_result = format_scan_results(
+        "Movies Without Trailers", movies_without_trailers, verbose=verbose
+    )
     print_message(movies_result, INFO)
 
-    tvshows_result = format_scan_results("TV Shows Without Trailers", tvshows_without_trailers)
+    tvshows_result = format_scan_results(
+        "TV Shows Without Trailers", tvshows_without_trailers, verbose=verbose
+    )
     print_message(tvshows_result, INFO)
 
     # Summary
@@ -163,15 +171,13 @@ def _main() -> int:
 
     try:
         # Load scraper configuration
-        scraper = _load_scraper(args.verbose, args.use_smb)
+        scraper, _ = _load_scraper(args.verbose, args.use_smb)
 
         # Scan for missing trailers
-        movies_without_trailers, tvshows_without_trailers = _scan_for_missing_trailers(
-            scraper, args.verbose
-        )
+        movies_without_trailers, tvshows_without_trailers = _scan_for_missing_trailers(scraper)
 
         # Display results
-        _display_scan_results(movies_without_trailers, tvshows_without_trailers)
+        _display_scan_results(movies_without_trailers, tvshows_without_trailers, args.verbose)
 
         # Note: Steps 2-4 (TMDB search, YouTube fallback, download) will be implemented later
 
