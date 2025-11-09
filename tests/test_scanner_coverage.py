@@ -4,13 +4,12 @@
 
 from unittest.mock import patch
 
-
-from youtubetrailerscraper.moviescanner import (
+from youtubetrailerscraper.moviescanner import (  # pylint: disable=import-error
     MovieScanner,
-)  # pylint: disable=import-error
-from youtubetrailerscraper.tvshowscanner import (
+)
+from youtubetrailerscraper.tvshowscanner import (  # pylint: disable=import-error
     TVShowScanner,
-)  # pylint: disable=import-error
+)
 
 
 class TestMovieScannerCoverage:

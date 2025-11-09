@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# pylint: disable=duplicate-code
 """Test to cover line 121 in tvshowscanner.py - _has_subdirectories_with_videos returning False."""
 
-from youtubetrailerscraper.tvshowscanner import (
+from youtubetrailerscraper.tvshowscanner import (  # pylint: disable=import-error
     TVShowScanner,
-)  # pylint: disable=import-error
+)
 
 
 def test_has_subdirectories_with_videos_no_videos_found(tmp_path):

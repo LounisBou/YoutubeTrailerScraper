@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# pylint: disable=duplicate-code
 """Tests for YoutubeTrailerScraper main functionality (scanning, caching, searching)."""
 
 import os
