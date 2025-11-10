@@ -16,6 +16,7 @@ def test_scan_for_movies_without_trailers_empty_paths():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write("MOVIES_PATHS=[]\n")
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         env_file = f.name
 
     try:
@@ -39,6 +40,7 @@ def test_scan_for_movies_with_sample_mode(tmp_path):
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write(f'MOVIES_PATHS=["{str(tmp_path)}/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SCAN_SAMPLE_SIZE=3\n")
         f.write("USE_SMB_MOUNT=false\n")  # Disable SMB mount
         env_file = f.name
@@ -59,6 +61,7 @@ def test_scan_for_tvshows_without_trailers_empty_paths():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write("TVSHOWS_PATHS=[]\n")
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         env_file = f.name
 
     try:
@@ -84,6 +87,7 @@ def test_scan_for_tvshows_with_sample_mode(tmp_path):
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write(f'TVSHOWS_PATHS=["{str(tmp_path)}/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SCAN_SAMPLE_SIZE=3\n")
         f.write("USE_SMB_MOUNT=false\n")  # Disable SMB mount
         env_file = f.name
@@ -104,6 +108,7 @@ def test_clear_cache():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         env_file = f.name
 
     try:
@@ -121,6 +126,7 @@ def test_search_for_movie_trailer(mocker):
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         env_file = f.name
 
     try:

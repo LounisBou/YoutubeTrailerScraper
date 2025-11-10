@@ -80,7 +80,9 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
 
         # Initialize TMDB search engine
         self.tmdb_search_engine = TMDBSearchEngine(
-            api_key=self.tmdb_api_key, base_url=self.tmdb_api_base_url
+            api_key=self.tmdb_api_key,
+            base_url=self.tmdb_api_base_url,
+            languages=self.tmdb_languages,
         )
 
     def _load_environment_variables(self, env_file: Optional[str] = None) -> None:
@@ -114,6 +116,10 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         self.tmdb_api_base_url = self._get_env_var(
             "TMDB_API_BASE_URL", default="https://api.themoviedb.org/3"
         )
+
+        # Load TMDB languages for multi-language search
+        tmdb_languages_raw = self._get_env_var("TMDB_LANGUAGES", default='["en-US"]')
+        self.tmdb_languages = self._parse_string_list(tmdb_languages_raw)
 
         # Load SMB mount configuration
         self.logger.debug("Loading SMB mount configuration...")
@@ -203,6 +209,31 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
                 "Please check your .env file."
             )
         return value
+
+    def _parse_string_list(self, list_str: str) -> list[str]:
+        """
+        Parse a string representation of a list into a list of strings
+
+        Parameters:
+            list_str (str): String representation of string list (Python list format)
+
+        Returns:
+            list[str]: List of strings
+
+        Raises:
+            ValueError: If list_str is not a valid Python list
+        """
+        try:
+            # Use ast.literal_eval to safely parse the string as a Python list
+            result_list = ast.literal_eval(list_str)
+            if not isinstance(result_list, list):
+                raise ValueError("Value must be a Python list")
+            return [str(item) for item in result_list]
+        except (ValueError, SyntaxError) as e:
+            raise ValueError(
+                f"Invalid list format: {list_str}. "
+                f"Expected Python list format, e.g., ['item1', 'item2']. Error: {e}"
+            ) from e
 
     def _parse_path_list(self, paths_str: str) -> list[Path]:
         """

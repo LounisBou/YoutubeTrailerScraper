@@ -198,7 +198,9 @@ class TestTMDBSearchEngineSearchMovie:
 
             assert result == ["https://www.youtube.com/watch?v=abc123"]
             assert mock_request.call_count == 2
-            mock_request.assert_any_call("/search/movie", {"query": "Inception", "year": 2010})
+            mock_request.assert_any_call(
+                "/search/movie", {"query": "Inception", "language": "en-US", "year": 2010}
+            )
             mock_request.assert_any_call("/movie/123/videos")
 
     def test_search_movie_without_year(self):
@@ -214,7 +216,9 @@ class TestTMDBSearchEngineSearchMovie:
             result = engine.search_movie("Inception")
 
             assert result == ["https://www.youtube.com/watch?v=xyz789"]
-            mock_request.assert_any_call("/search/movie", {"query": "Inception"})
+            mock_request.assert_any_call(
+                "/search/movie", {"query": "Inception", "language": "en-US"}
+            )
 
     def test_search_movie_no_results(self):
         """Test searching for movie that returns no results."""
@@ -280,7 +284,8 @@ class TestTMDBSearchEngineSearchTVShow:
             assert result == ["https://www.youtube.com/watch?v=tv123"]
             assert mock_request.call_count == 2
             mock_request.assert_any_call(
-                "/search/tv", {"query": "Breaking Bad", "first_air_date_year": 2008}
+                "/search/tv",
+                {"query": "Breaking Bad", "language": "en-US", "first_air_date_year": 2008},
             )
             mock_request.assert_any_call("/tv/789/videos")
 
@@ -297,7 +302,9 @@ class TestTMDBSearchEngineSearchTVShow:
             result = engine.search_tv_show("Breaking Bad")
 
             assert result == ["https://www.youtube.com/watch?v=show456"]
-            mock_request.assert_any_call("/search/tv", {"query": "Breaking Bad"})
+            mock_request.assert_any_call(
+                "/search/tv", {"query": "Breaking Bad", "language": "en-US"}
+            )
 
     def test_search_tv_show_no_results(self):
         """Test searching for TV show that returns no results."""

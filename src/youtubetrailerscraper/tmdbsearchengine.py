@@ -55,6 +55,7 @@ class TMDBSearchEngine:
         timeout: int = 10,
         max_retries: int = 3,
         retry_delay: float = 1.0,
+        languages: Optional[list[str]] = None,
     ):
         """Initialize TMDBSearchEngine with API credentials.
 
@@ -64,6 +65,8 @@ class TMDBSearchEngine:
             timeout: HTTP request timeout in seconds.
             max_retries: Maximum number of retry attempts for failed requests.
             retry_delay: Delay between retry attempts in seconds.
+            languages: List of TMDB language codes to try in order (e.g., ["fr-FR", "en-US"]).
+                      Defaults to ["en-US"] if not provided.
 
         Raises:
             ValueError: If api_key is empty or None.
@@ -76,6 +79,7 @@ class TMDBSearchEngine:
         self.timeout = timeout
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        self.languages = languages if languages else ["en-US"]
 
     def _make_request(
         self, endpoint: str, params: Optional[dict[str, Any]] = None
@@ -126,8 +130,82 @@ class TMDBSearchEngine:
                     youtube_urls.append(f"https://www.youtube.com/watch?v={video_key}")
         return youtube_urls
 
+    def _search_movie_with_language(
+        self, title: str, year: Optional[int], language: str
+    ) -> tuple[Optional[int], list[dict]]:
+        """Search for movie with a specific language setting.
+
+        Args:
+            title: Movie title to search for.
+            year: Optional release year.
+            language: TMDB language code (e.g., "fr-FR", "en-US").
+
+        Returns:
+            Tuple of (movie_id, videos_list). Returns (None, []) if no results found.
+        """
+        search_params: dict[str, Any] = {"query": title, "language": language}
+        if year:
+            search_params["year"] = year
+
+        print("\n\n----------------------------")  # Debug print
+        print(f"Searching TMDB for movie: search_params={search_params}")  # Debug print
+
+        search_results = self._make_request("/search/movie", search_params)
+        results = search_results.get("results", [])
+
+        print(f"TMDB search results: {results}")  # Debug print
+        print("----------------------------\n\n")  # Debug print
+
+        if not results:
+            return None, []
+
+        # Get videos for the first (most relevant) result
+        movie_id = results[0].get("id")
+        if not movie_id:
+            return None, []
+
+        videos_response = self._make_request(f"/movie/{movie_id}/videos")
+        videos = videos_response.get("results", [])
+
+        return movie_id, videos
+
+    def _search_tv_show_with_language(
+        self, title: str, year: Optional[int], language: str
+    ) -> tuple[Optional[int], list[dict]]:
+        """Search for TV show with a specific language setting.
+
+        Args:
+            title: TV show title to search for.
+            year: Optional first air year.
+            language: TMDB language code (e.g., "fr-FR", "en-US").
+
+        Returns:
+            Tuple of (tv_show_id, videos_list). Returns (None, []) if no results found.
+        """
+        search_params: dict[str, Any] = {"query": title, "language": language}
+        if year:
+            search_params["first_air_date_year"] = year
+
+        search_results = self._make_request("/search/tv", search_params)
+        results = search_results.get("results", [])
+
+        if not results:
+            return None, []
+
+        # Get videos for the first (most relevant) result
+        tv_id = results[0].get("id")
+        if not tv_id:
+            return None, []
+
+        videos_response = self._make_request(f"/tv/{tv_id}/videos")
+        videos = videos_response.get("results", [])
+
+        return tv_id, videos
+
     def search_movie(self, title: str, year: Optional[int] = None) -> list[str]:
-        """Search for movie trailers on TMDB.
+        """Search for movie trailers on TMDB with multi-language fallback.
+
+        Tries searching with each configured language in order until results are found.
 
         Args:
             title: Movie title to search for.
@@ -138,41 +216,35 @@ class TMDBSearchEngine:
             Empty list if no trailers found or if search fails.
 
         Example:
-            >>> engine = TMDBSearchEngine(api_key="your_key")
-            >>> urls = engine.search_movie("Inception", year=2010)
+            >>> engine = TMDBSearchEngine(api_key="your_key", languages=["fr-FR", "en-US"])
+            >>> urls = engine.search_movie("Ant-Man et la Guêpe Quantumania", year=2023)
             >>> print(urls)
-            ['https://www.youtube.com/watch?v=YoHD9XEInc0']
+            ['https://www.youtube.com/watch?v=5WfTEZJnv_8']
         """
         if not title:
             return []
 
         try:
-            # Search for the movie
-            search_params: dict[str, Any] = {"query": title}
-            if year:
-                search_params["year"] = year
+            # Try each language in order until we find results
+            for language in self.languages:
+                movie_id, videos = self._search_movie_with_language(title, year, language)
 
-            search_results = self._make_request("/search/movie", search_params)
-            results = search_results.get("results", [])
+                if movie_id and videos:
+                    youtube_urls = self._extract_youtube_urls(videos)
+                    if youtube_urls:
+                        print(f"✓ Found trailers with language: {language}")  # Debug print
+                        return youtube_urls
 
-            if not results:
-                return []
-
-            # Get videos for the first (most relevant) result
-            movie_id = results[0].get("id")
-            if not movie_id:
-                return []
-
-            videos_response = self._make_request(f"/movie/{movie_id}/videos")
-            videos = videos_response.get("results", [])
-
-            return self._extract_youtube_urls(videos)
+            # No results found with any language
+            return []
 
         except requests.exceptions.RequestException:
             return []
 
     def search_tv_show(self, title: str, year: Optional[int] = None) -> list[str]:
-        """Search for TV show trailers on TMDB.
+        """Search for TV show trailers on TMDB with multi-language fallback.
+
+        Tries searching with each configured language in order until results are found.
 
         Args:
             title: TV show title to search for.
@@ -183,7 +255,7 @@ class TMDBSearchEngine:
             Empty list if no trailers found or if search fails.
 
         Example:
-            >>> engine = TMDBSearchEngine(api_key="your_key")
+            >>> engine = TMDBSearchEngine(api_key="your_key", languages=["fr-FR", "en-US"])
             >>> urls = engine.search_tv_show("Breaking Bad", year=2008)
             >>> print(urls)
             ['https://www.youtube.com/watch?v=HhesaQXLuRY']
@@ -192,26 +264,18 @@ class TMDBSearchEngine:
             return []
 
         try:
-            # Search for the TV show
-            search_params: dict[str, Any] = {"query": title}
-            if year:
-                search_params["first_air_date_year"] = year
+            # Try each language in order until we find results
+            for language in self.languages:
+                tv_id, videos = self._search_tv_show_with_language(title, year, language)
 
-            search_results = self._make_request("/search/tv", search_params)
-            results = search_results.get("results", [])
+                if tv_id and videos:
+                    youtube_urls = self._extract_youtube_urls(videos)
+                    if youtube_urls:
+                        print(f"✓ Found trailers with language: {language}")  # Debug print
+                        return youtube_urls
 
-            if not results:
-                return []
-
-            # Get videos for the first (most relevant) result
-            tv_id = results[0].get("id")
-            if not tv_id:
-                return []
-
-            videos_response = self._make_request(f"/tv/{tv_id}/videos")
-            videos = videos_response.get("results", [])
-
-            return self._extract_youtube_urls(videos)
+            # No results found with any language
+            return []
 
         except requests.exceptions.RequestException:
             return []

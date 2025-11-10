@@ -21,6 +21,7 @@ def env_file():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         env_file_path = f.name
 
     yield env_file_path

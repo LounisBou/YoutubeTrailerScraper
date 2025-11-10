@@ -169,7 +169,7 @@ All trailer videos are downloaded using **yt-dlp**.
 ---
 
 ### ✅ Step 4a: Implement TMDB Search Engine + Full Integration
-**Status**: FULLY COMPLETED
+**Status**: FULLY COMPLETED (with multi-language support)
 
 **Part 1: TMDBSearchEngine Class**
 - [x] Implement TMDBSearchEngine class
@@ -178,6 +178,7 @@ All trailer videos are downloaded using **yt-dlp**.
   - [x] TV show search endpoint integration (`/search/tv`, `/tv/{id}/videos`)
   - [x] Extract YouTube URLs from TMDB video data (filters for type="Trailer" and site="YouTube")
   - [x] Handle API errors and rate limiting (retry logic with configurable attempts and delays)
+  - [x] **Multi-language fallback search** (configurable languages, tries each until results found)
   - [x] Add comprehensive docstrings (Google-style with examples)
   - [x] Write unit tests (30 comprehensive tests with mocked API responses)
 
@@ -228,8 +229,9 @@ All trailer videos are downloaded using **yt-dlp**.
 **Implementation highlights:**
 - **Metadata extraction**: Regex-based parsing of directory names to extract title and year
 - **Batch processing**: Orchestration methods efficiently process multiple movies/TV shows
+- **Multi-language search**: Automatically tries multiple TMDB language settings (fr-FR, en-US, etc.) in order
 - **Comprehensive logging**: Debug, info, and success messages throughout the workflow
-- **CLI demonstration**: Full integration test via `python main.py --search-tmdb` command
+- **CLI demonstration**: Full integration test via `python main.py` command (automatic TMDB search)
 - **Error handling**: Graceful handling of API failures, missing data, and empty results
 
 **Code quality (all files):**
@@ -238,6 +240,19 @@ All trailer videos are downloaded using **yt-dlp**.
 - mypy: ✅ No type errors
 - pylint: ✅ 10.00/10 score across all files
 - Coverage: ✅ 99% (1 unreachable line is acceptable)
+
+**Multi-language configuration:**
+Add `TMDB_LANGUAGES` to your `.env` file to specify language priority order:
+```bash
+# Try French first, then English
+TMDB_LANGUAGES=["fr-FR", "en-US"]
+
+# Try English only (default)
+TMDB_LANGUAGES=["en-US"]
+
+# Try German, then French, then English
+TMDB_LANGUAGES=["de-DE", "fr-FR", "en-US"]
+```
 
 **Usage example:**
 ```bash
@@ -251,7 +266,10 @@ python main.py --verbose
 python main.py --scan-sample
 ```
 
-**Note**: TMDB search happens automatically for all movies/TV shows without trailers. No flag required!
+**Note**:
+- TMDB search happens automatically for all movies/TV shows without trailers. No flag required!
+- Multi-language fallback tries each configured language until trailers are found
+- Plex folders can have titles in any language (French, English, German, etc.)
 
 ---
 
@@ -484,4 +502,4 @@ src/youtubetrailerscraper/
 
 ---
 
-**Last Updated**: 2025-11-10 (Step 4a fully completed - TMDB search is now automatic)
+**Last Updated**: 2025-11-10 (Step 4a fully completed - TMDB search is now automatic with multi-language support)
