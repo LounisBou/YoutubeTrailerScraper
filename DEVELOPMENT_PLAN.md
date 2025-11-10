@@ -348,6 +348,30 @@ src/youtubetrailerscraper/
 
 ---
 
+## Engineering Improvement Ideas
+
+1. **Document PyMate as a core dependency**  
+   - Add `pymate` (and the `diskcache` backend it relies on) to `pyproject.toml`/`requirements.txt` with pinned versions.  
+   - Call out the dependency explicitly in `README.md` and `.env.example` so downstream consumers know they must install it before running the CLI.
+
+2. **Add a `--env-file` CLI switch**  
+   - Let users point the CLI at any configuration file (e.g., `python main.py --env-file ~/configs/prod.env`) without copying it to the repo root.  
+   - Thread the selected path into `YoutubeTrailerScraper` so tests can drop per-suite configs without mucking with `.env`.
+
+3. **Align docs with actual env variable names**  
+   - Update `README.md` and `.env.example` to refer to `MOVIES_PATHS`/`TVSHOWS_PATHS` (Python list syntax) instead of the legacy `*_DIRS` comma-separated strings.  
+   - Add a short rationale plus examples for SMB prefixing to reduce onboarding friction.
+
+4. **Improve CLI ergonomics**  
+   - Provide a `--dry-run` flag that only reports missing trailers (no future downloads/searches) and a `--json` output mode for piping results into automation.  
+   - Share the single `LogIt` instance across helpers (already started) and surface a `--log-file` argument for long-running scans.
+
+5. **Configuration validation & health checks**  
+   - During startup, add optional checks that the TMDB token and YouTube connectivity work (fail fast with actionable errors).  
+   - Extend `commandlinehelper.check_args` to validate SMB mount availability when `--use-smb` is passed and to warn when configured paths do not exist.
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests
