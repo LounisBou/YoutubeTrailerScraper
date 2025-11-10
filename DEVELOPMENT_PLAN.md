@@ -168,19 +168,64 @@ All trailer videos are downloaded using **yt-dlp**.
 
 ---
 
-### 📋 Step 4: Implement Search Engines
+### ✅ Step 4a: Implement TMDB Search Engine
+**Status**: COMPLETED
+
+**Tasks:**
+- [x] Implement TMDBSearchEngine class
+  - [x] TMDB API authentication via API key
+  - [x] Movie search endpoint integration (`/search/movie`, `/movie/{id}/videos`)
+  - [x] TV show search endpoint integration (`/search/tv`, `/tv/{id}/videos`)
+  - [x] Extract YouTube URLs from TMDB video data (filters for type="Trailer" and site="YouTube")
+  - [x] Handle API errors and rate limiting (retry logic with configurable attempts and delays)
+  - [x] Add comprehensive docstrings (Google-style with examples)
+  - [x] Write unit tests (30 comprehensive tests with mocked API responses)
+
+**Files created/modified:**
+- ✅ `src/youtubetrailerscraper/tmdbsearchengine.py` (216 lines - fully implemented)
+- ✅ `tests/test_tmdbsearchengine.py` (365 lines - 30 tests covering all functionality)
+
+**Implementation details:**
+- **Class methods:**
+  - `search_movie(title, year)`: Search for movie trailers by title and optional year
+  - `search_tv_show(title, year)`: Search for TV show trailers by title and optional first air year
+  - `_make_request(endpoint, params)`: HTTP GET with retry logic (3 retries by default)
+  - `_extract_youtube_urls(videos)`: Extract YouTube URLs from TMDB video results
+
+- **Features:**
+  - Configurable retry logic (max_retries, retry_delay)
+  - Configurable timeout for HTTP requests
+  - Filters videos to only return YouTube trailers (not teasers, clips, or other sites)
+  - Returns list of YouTube URLs ready for download
+  - Graceful error handling (returns empty list on failures)
+
+- **API Documentation:**
+  - TMDB API: https://developers.themoviedb.org/3
+  - Search Movies: https://developers.themoviedb.org/3/search/search-movies
+  - Search TV Shows: https://developers.themoviedb.org/3/search/search-tv-shows
+  - Get Videos: https://developers.themoviedb.org/3/movies/get-movie-videos
+
+**Test coverage:**
+- Total: 30 tests (all passing)
+- Initialization: 5 tests
+- HTTP request handling: 4 tests (including retry logic)
+- YouTube URL extraction: 6 tests
+- Movie search: 7 tests
+- TV show search: 8 tests
+- Overall coverage: 99% (unreachable safety return statement at line 108)
+
+**Code quality:**
+- Black: ✅ All files formatted (99 char line length)
+- isort: ✅ All imports sorted
+- mypy: ✅ No type errors (proper type hints with Any for mixed-type dicts)
+- pylint: ✅ 10.00/10 score
+
+---
+
+### 📋 Step 4b: Implement YouTube Search Engine (Fallback)
 **Status**: NOT STARTED
 
 **Tasks:**
-- [ ] Implement TMDBSearchEngine class
-  - [ ] TMDB API authentication
-  - [ ] Movie search endpoint integration
-  - [ ] TV show search endpoint integration
-  - [ ] Extract YouTube URLs from TMDB video data
-  - [ ] Handle API errors and rate limiting
-  - [ ] Add comprehensive docstrings
-  - [ ] Write unit tests (with mocked API responses)
-
 - [ ] Implement YoutubeSearchEngine class
   - [ ] YouTube search functionality
   - [ ] Video ID extraction
@@ -190,20 +235,16 @@ All trailer videos are downloaded using **yt-dlp**.
   - [ ] Write unit tests
 
 **Files to modify:**
-- `src/youtubetrailerscraper/tmdbsearchengine.py`
 - `src/youtubetrailerscraper/youtubesearchengine.py`
-- `tests/test_tmdbsearchengine.py` (to be created)
 - `tests/test_youtubesearchengine.py` (to be created)
 
 **API Documentation:**
-- TMDB API: https://developers.themoviedb.org/3
 - YouTube Data API: https://developers.google.com/youtube/v3
 
 **Design considerations:**
-- Rate limiting and retry logic
-- Caching API responses (optional)
-- Fallback between TMDB and YouTube
-- Video quality preferences
+- This will be the fallback when TMDB has no trailers
+- Should use web scraping or YouTube Data API (requires API key)
+- Consider using yt-dlp search capabilities as alternative
 
 ---
 
@@ -410,4 +451,4 @@ src/youtubetrailerscraper/
 
 ---
 
-**Last Updated**: 2025-11-09
+**Last Updated**: 2025-11-10
