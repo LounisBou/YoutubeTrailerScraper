@@ -89,7 +89,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         """
         # Load .env file
         env_path = env_file or ".env"
-        self.logger.debug("Loading environment from: %s", env_path)
+        self.logger.debug(f"Loading environment from: {env_path}")
 
         if not Path(env_path).exists():
             raise FileNotFoundError(
@@ -125,15 +125,19 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
 
         # Apply SMB mount point prefix if enabled
         if self.use_smb_mount and self.smb_mount_point:
-            self.logger.debug("Applying SMB mount prefix: %s", self.smb_mount_point)
+            # pylint: disable=logging-fstring-interpolation
+            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            self.logger.debug(f"Applying SMB mount prefix: {self.smb_mount_point}")
             self.movies_paths = self._apply_smb_prefix(movies_paths_raw)
             self.tvshows_paths = self._apply_smb_prefix(tvshows_paths_raw)
         else:
             self.movies_paths = movies_paths_raw
             self.tvshows_paths = tvshows_paths_raw
 
-        self.logger.debug("Loaded %d movie paths", len(self.movies_paths))
-        self.logger.debug("Loaded %d TV show paths", len(self.tvshows_paths))
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.debug(f"Loaded {len(self.movies_paths)} movie paths")
+        self.logger.debug(f"Loaded {len(self.tvshows_paths)} TV show paths")
 
         # Load optional configurations
         self.youtube_search_url = self._get_env_var(
@@ -149,10 +153,14 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         if scan_sample_str:
             try:
                 self.scan_sample_size = int(scan_sample_str)
-                self.logger.debug("Scan sample size set to: %d", self.scan_sample_size)
+                # pylint: disable=logging-fstring-interpolation
+                # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+                self.logger.debug(f"Scan sample size set to: {self.scan_sample_size}")
             except ValueError:
+                # pylint: disable=logging-fstring-interpolation
+                # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
                 self.logger.warning(
-                    "Invalid SCAN_SAMPLE_SIZE value '%s', ignoring", scan_sample_str
+                    f"Invalid SCAN_SAMPLE_SIZE value '{scan_sample_str}', ignoring"
                 )
                 self.scan_sample_size = None
 
@@ -162,7 +170,9 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         )
         # Extract prefix before {season_number} (e.g., "Saison" from "Saison {season_number}")
         self.tvshow_season_pattern = season_pattern_raw.split("{")[0].strip()
-        self.logger.debug("TV show season pattern set to: %s", self.tvshow_season_pattern)
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.debug(f"TV show season pattern set to: {self.tvshow_season_pattern}")
 
     def _get_env_var(self, key: str, required: bool = False, default: str = "") -> str:
         """
@@ -269,16 +279,18 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         # Determine sample size to use (0 = no sampling, all results)
         sample_size = self.scan_sample_size if use_sample and self.scan_sample_size else 0
 
-        self.logger.debug("Scanning %d movie directories...", len(self.movies_paths))
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.debug(f"Scanning {len(self.movies_paths)} movie directories...")
         for path in self.movies_paths:
-            self.logger.debug("  - %s", path)
+            self.logger.debug(f"  - {path}")
 
         scanner = MovieScanner()
         missing_trailers = scanner.find_missing_trailers(self.movies_paths, sample_size)
 
-        self.logger.info("Found %d movies without trailers", len(missing_trailers))
+        self.logger.info(f"Found {len(missing_trailers)} movies without trailers")
         for movie_path in missing_trailers:
-            self.logger.debug("  - %s", movie_path)
+            self.logger.debug(f"  - {movie_path}")
 
         return missing_trailers
 
@@ -310,16 +322,18 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         # Determine sample size to use (0 = no sampling, all results)
         sample_size = self.scan_sample_size if use_sample and self.scan_sample_size else 0
 
-        self.logger.debug("Scanning %d TV show directories...", len(self.tvshows_paths))
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.debug(f"Scanning {len(self.tvshows_paths)} TV show directories...")
         for path in self.tvshows_paths:
-            self.logger.debug("  - %s", path)
+            self.logger.debug(f"  - {path}")
 
         scanner = TVShowScanner(season_pattern=self.tvshow_season_pattern)
         missing_trailers = scanner.find_missing_trailers(self.tvshows_paths, sample_size)
 
-        self.logger.info("Found %d TV shows without trailers", len(missing_trailers))
+        self.logger.info(f"Found {len(missing_trailers)} TV shows without trailers")
         for tvshow_path in missing_trailers:
-            self.logger.debug("  - %s", tvshow_path)
+            self.logger.debug(f"  - {tvshow_path}")
 
         return missing_trailers
 
