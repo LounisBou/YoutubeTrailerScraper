@@ -9,8 +9,11 @@ CLI:
 """
 from __future__ import annotations
 
+import logging
 import sys
 import traceback
+
+from pymate.logit import LogIt
 
 from commandlinehelper import (
     ERROR,
@@ -24,7 +27,6 @@ from commandlinehelper import (
     set_default_args_values,
 )
 from src.youtubetrailerscraper import YoutubeTrailerScraper
-from src.youtubetrailerscraper.logger import setup_logger
 
 
 def _parse_and_validate_args():
@@ -75,8 +77,9 @@ def _load_scraper(verbose: bool, use_smb: bool):
     try:
         print_message("Loading environment configuration...", INFO)
 
-        # Set up logger for the scraper
-        logger = setup_logger(verbose=verbose)
+        # Set up logger for the scraper using PyMate's LogIt
+        log_level = logging.DEBUG if verbose else logging.INFO
+        logger = LogIt(name="youtubetrailerscraper", level=log_level, console=True, file=False)
 
         # Create scraper with logger
         scraper = YoutubeTrailerScraper(use_smb=use_smb, logger=logger)
