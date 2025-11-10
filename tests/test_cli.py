@@ -84,7 +84,8 @@ def test_cli_runs_default(test_env_file) -> None:  # pylint: disable=redefined-o
     cp = run_cli_with_env(test_env_file)
     assert cp.returncode == 0
 
-    output_lower = cp.stdout.lower()
+    # LogIt outputs to stderr by default
+    output_lower = cp.stderr.lower()
 
     # Should show scan results
     assert "movies without trailers" in output_lower
