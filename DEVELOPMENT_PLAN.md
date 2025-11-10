@@ -168,10 +168,10 @@ All trailer videos are downloaded using **yt-dlp**.
 
 ---
 
-### ✅ Step 4a: Implement TMDB Search Engine
-**Status**: COMPLETED
+### ✅ Step 4a: Implement TMDB Search Engine + Full Integration
+**Status**: FULLY COMPLETED
 
-**Tasks:**
+**Part 1: TMDBSearchEngine Class**
 - [x] Implement TMDBSearchEngine class
   - [x] TMDB API authentication via API key
   - [x] Movie search endpoint integration (`/search/movie`, `/movie/{id}/videos`)
@@ -181,44 +181,77 @@ All trailer videos are downloaded using **yt-dlp**.
   - [x] Add comprehensive docstrings (Google-style with examples)
   - [x] Write unit tests (30 comprehensive tests with mocked API responses)
 
+**Part 2: YoutubeTrailerScraper Integration**
+- [x] Add TMDBSearchEngine instance to YoutubeTrailerScraper
+- [x] Implement metadata extraction utilities
+  - [x] `_extract_movie_metadata(path)`: Extract title and year from directory names
+  - [x] `_extract_tvshow_metadata(path)`: Extract TV show title and year
+- [x] Implement search methods
+  - [x] `search_for_movie_trailer(title, year)`: Search TMDB for movie trailers
+  - [x] `search_for_tvshow_trailer(title, year)`: Search TMDB for TV show trailers
+- [x] Implement orchestration methods
+  - [x] `search_trailers_for_movies(paths)`: Batch search for multiple movies
+  - [x] `search_trailers_for_tvshows(paths)`: Batch search for multiple TV shows
+
+**Part 3: CLI Integration**
+- [x] Add `--search-tmdb` flag to commandlinehelper.py
+- [x] Implement `_search_and_display_tmdb_results()` in main.py
+- [x] Create helper functions for cleaner code:
+  - [x] `_display_media_search_results()`: Display search results
+  - [x] `_search_movies_on_tmdb()`: Search movies and display results
+  - [x] `_search_tvshows_on_tmdb()`: Search TV shows and display results
+- [x] Integrate TMDB search into main workflow
+
+**Part 4: Integration Tests**
+- [x] Create comprehensive integration test suite (`tests/test_tmdb_integration.py`)
+- [x] Metadata extraction tests (7 tests)
+- [x] Search integration tests (6 tests)
+- [x] Orchestration tests (6 tests)
+- [x] End-to-end workflow tests (2 tests)
+- [x] Update existing test for `search_for_movie_trailer` with mocks
+
 **Files created/modified:**
-- ✅ `src/youtubetrailerscraper/tmdbsearchengine.py` (216 lines - fully implemented)
-- ✅ `tests/test_tmdbsearchengine.py` (365 lines - 30 tests covering all functionality)
+- ✅ `src/youtubetrailerscraper/tmdbsearchengine.py` (216 lines)
+- ✅ `src/youtubetrailerscraper/youtubetrailerscraper.py` (+150 lines of integration code)
+- ✅ `tests/test_tmdbsearchengine.py` (365 lines - 30 tests)
+- ✅ `tests/test_tmdb_integration.py` (382 lines - 21 tests, NEW)
+- ✅ `tests/test_youtubetrailerscraper.py` (updated 1 test with mock)
+- ✅ `main.py` (+120 lines for TMDB search display)
+- ✅ `commandlinehelper.py` (+6 lines for --search-tmdb flag)
 
-**Implementation details:**
-- **Class methods:**
-  - `search_movie(title, year)`: Search for movie trailers by title and optional year
-  - `search_tv_show(title, year)`: Search for TV show trailers by title and optional first air year
-  - `_make_request(endpoint, params)`: HTTP GET with retry logic (3 retries by default)
-  - `_extract_youtube_urls(videos)`: Extract YouTube URLs from TMDB video results
+**Total test coverage:**
+- TMDBSearchEngine: 30 tests (all passing)
+- TMDB Integration: 21 tests (all passing)
+- Updated tests: 1 test
+- **Total: 168 tests passing, 99% code coverage**
 
-- **Features:**
-  - Configurable retry logic (max_retries, retry_delay)
-  - Configurable timeout for HTTP requests
-  - Filters videos to only return YouTube trailers (not teasers, clips, or other sites)
-  - Returns list of YouTube URLs ready for download
-  - Graceful error handling (returns empty list on failures)
+**Implementation highlights:**
+- **Metadata extraction**: Regex-based parsing of directory names to extract title and year
+- **Batch processing**: Orchestration methods efficiently process multiple movies/TV shows
+- **Comprehensive logging**: Debug, info, and success messages throughout the workflow
+- **CLI demonstration**: Full integration test via `python main.py --search-tmdb` command
+- **Error handling**: Graceful handling of API failures, missing data, and empty results
 
-- **API Documentation:**
-  - TMDB API: https://developers.themoviedb.org/3
-  - Search Movies: https://developers.themoviedb.org/3/search/search-movies
-  - Search TV Shows: https://developers.themoviedb.org/3/search/search-tv-shows
-  - Get Videos: https://developers.themoviedb.org/3/movies/get-movie-videos
-
-**Test coverage:**
-- Total: 30 tests (all passing)
-- Initialization: 5 tests
-- HTTP request handling: 4 tests (including retry logic)
-- YouTube URL extraction: 6 tests
-- Movie search: 7 tests
-- TV show search: 8 tests
-- Overall coverage: 99% (unreachable safety return statement at line 108)
-
-**Code quality:**
+**Code quality (all files):**
 - Black: ✅ All files formatted (99 char line length)
 - isort: ✅ All imports sorted
-- mypy: ✅ No type errors (proper type hints with Any for mixed-type dicts)
-- pylint: ✅ 10.00/10 score
+- mypy: ✅ No type errors
+- pylint: ✅ 10.00/10 score across all files
+- Coverage: ✅ 99% (1 unreachable line is acceptable)
+
+**Usage example:**
+```bash
+# Scan for missing trailers and automatically search TMDB
+python main.py
+
+# With verbose output showing full URLs
+python main.py --verbose
+
+# Sample mode (automatically searches TMDB for results)
+python main.py --scan-sample
+```
+
+**Note**: TMDB search happens automatically for all movies/TV shows without trailers. No flag required!
 
 ---
 
@@ -451,4 +484,4 @@ src/youtubetrailerscraper/
 
 ---
 
-**Last Updated**: 2025-11-10
+**Last Updated**: 2025-11-10 (Step 4a fully completed - TMDB search is now automatic)

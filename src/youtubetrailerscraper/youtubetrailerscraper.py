@@ -27,12 +27,14 @@ from __future__ import annotations
 import ast
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
 
 from youtubetrailerscraper.moviescanner import MovieScanner
+from youtubetrailerscraper.tmdbsearchengine import TMDBSearchEngine
 from youtubetrailerscraper.tvshowscanner import TVShowScanner
 
 
@@ -75,6 +77,11 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
 
         # Load environment variables
         self._load_environment_variables(env_file)
+
+        # Initialize TMDB search engine
+        self.tmdb_search_engine = TMDBSearchEngine(
+            api_key=self.tmdb_api_key, base_url=self.tmdb_api_base_url
+        )
 
     def _load_environment_variables(self, env_file: Optional[str] = None) -> None:
         """
@@ -337,24 +344,254 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
 
         return missing_trailers
 
-    def search_for_movie_trailer(
-        self,
-        title: str,  # pylint: disable=unused-argument
-        year: int | None,  # pylint: disable=unused-argument
-    ) -> list[str]:
-        """
-        Search for movie trailer on youtube
+    def _extract_movie_metadata(self, movie_path: Path) -> tuple[str, int | None]:
+        """Extract movie title and year from directory name.
 
-        Parameters:
-            title (str): Movie title
-            year (int|None): Movie release year
+        Parses movie directory names in common formats:
+        - "Movie Title (Year)" → ("Movie Title", Year)
+        - "Movie Title" → ("Movie Title", None)
+        - "Movie Title (Director's Cut) (Year)" → ("Movie Title (Director's Cut)", Year)
+
+        Args:
+            movie_path: Path to movie directory.
+
         Returns:
-            list[str]: YouTube video URLs of the trailer
+            Tuple of (title, year). Year is None if not found.
+
+        Example:
+            >>> path = Path("/movies/Inception (2010)")
+            >>> self._extract_movie_metadata(path)
+            ('Inception', 2010)
         """
-        # pylint: disable=fixme
-        # TODO: Implement in Step 4/5
-        # Create search query
-        return []
+        dir_name = movie_path.name
+
+        # Match year in parentheses at end: (YYYY)
+        year_pattern = r"\((\d{4})\)\s*$"
+        year_match = re.search(year_pattern, dir_name)
+
+        if year_match:
+            year = int(year_match.group(1))
+            # Remove year from title
+            title = dir_name[: year_match.start()].strip()
+        else:
+            year = None
+            title = dir_name
+
+        return title, year
+
+    def _extract_tvshow_metadata(self, tvshow_path: Path) -> tuple[str, int | None]:
+        """Extract TV show title and first air year from directory name.
+
+        Parses TV show directory names in common formats:
+        - "Show Title (Year)" → ("Show Title", Year)
+        - "Show Title" → ("Show Title", None)
+
+        Args:
+            tvshow_path: Path to TV show directory.
+
+        Returns:
+            Tuple of (title, year). Year is None if not found.
+
+        Example:
+            >>> path = Path("/tvshows/Breaking Bad")
+            >>> self._extract_tvshow_metadata(path)
+            ('Breaking Bad', None)
+        """
+        dir_name = tvshow_path.name
+
+        # Match year in parentheses at end: (YYYY)
+        year_pattern = r"\((\d{4})\)\s*$"
+        year_match = re.search(year_pattern, dir_name)
+
+        if year_match:
+            year = int(year_match.group(1))
+            # Remove year from title
+            title = dir_name[: year_match.start()].strip()
+        else:
+            year = None
+            title = dir_name
+
+        return title, year
+
+    def search_for_movie_trailer(self, title: str, year: int | None) -> list[str]:
+        """Search for movie trailer on TMDB.
+
+        Uses TMDBSearchEngine to query the TMDB API for official trailer YouTube URLs.
+        This is the primary method for finding trailers before falling back to direct
+        YouTube search.
+
+        Args:
+            title: Movie title to search for.
+            year: Optional movie release year to refine search results.
+
+        Returns:
+            List of YouTube URLs for trailers found on TMDB.
+            Empty list if no trailers found or search fails.
+
+        Example:
+            >>> scraper = YoutubeTrailerScraper()
+            >>> urls = scraper.search_for_movie_trailer("Inception", 2010)
+            >>> print(urls)
+            ['https://www.youtube.com/watch?v=YoHD9XEInc0']
+        """
+        if not title:
+            self.logger.warning("Empty title provided for movie trailer search")
+            return []
+
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.debug(f"Searching TMDB for movie: {title} ({year})")
+
+        youtube_urls = self.tmdb_search_engine.search_movie(title, year)
+
+        if youtube_urls:
+            # pylint: disable=logging-fstring-interpolation
+            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            self.logger.info(f"Found {len(youtube_urls)} trailer(s) on TMDB for: {title}")
+            for url in youtube_urls:
+                self.logger.debug(f"  - {url}")
+        else:
+            # pylint: disable=logging-fstring-interpolation
+            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            self.logger.debug(f"No TMDB trailers found for: {title}")
+
+        return youtube_urls
+
+    def search_for_tvshow_trailer(self, title: str, year: int | None) -> list[str]:
+        """Search for TV show trailer on TMDB.
+
+        Uses TMDBSearchEngine to query the TMDB API for official trailer YouTube URLs.
+        This is the primary method for finding TV show trailers before falling back to
+        direct YouTube search.
+
+        Args:
+            title: TV show title to search for.
+            year: Optional first air year to refine search results.
+
+        Returns:
+            List of YouTube URLs for trailers found on TMDB.
+            Empty list if no trailers found or search fails.
+
+        Example:
+            >>> scraper = YoutubeTrailerScraper()
+            >>> urls = scraper.search_for_tvshow_trailer("Breaking Bad", 2008)
+            >>> print(urls)
+            ['https://www.youtube.com/watch?v=HhesaQXLuRY']
+        """
+        if not title:
+            self.logger.warning("Empty title provided for TV show trailer search")
+            return []
+
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.debug(f"Searching TMDB for TV show: {title} ({year})")
+
+        youtube_urls = self.tmdb_search_engine.search_tv_show(title, year)
+
+        if youtube_urls:
+            # pylint: disable=logging-fstring-interpolation
+            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            self.logger.info(f"Found {len(youtube_urls)} trailer(s) on TMDB for: {title}")
+            for url in youtube_urls:
+                self.logger.debug(f"  - {url}")
+        else:
+            # pylint: disable=logging-fstring-interpolation
+            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            self.logger.debug(f"No TMDB trailers found for: {title}")
+
+        return youtube_urls
+
+    def search_trailers_for_movies(self, movie_paths: list[Path]) -> dict[Path, list[str]]:
+        """Search TMDB for trailers for multiple movies.
+
+        Extracts metadata from each movie directory path and searches TMDB for trailers.
+        This is a batch operation that processes multiple movies efficiently.
+
+        Args:
+            movie_paths: List of movie directory paths without trailers.
+
+        Returns:
+            Dictionary mapping movie path to list of YouTube URLs.
+            Paths with no trailers found map to empty list.
+
+        Example:
+            >>> scraper = YoutubeTrailerScraper()
+            >>> paths = [Path("/movies/Inception (2010)"), Path("/movies/The Matrix (1999)")]
+            >>> results = scraper.search_trailers_for_movies(paths)
+            >>> for path, urls in results.items():
+            ...     print(f"{path.name}: {len(urls)} trailers")
+        """
+        results = {}
+
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.info(f"Searching TMDB for {len(movie_paths)} movies...")
+
+        for movie_path in movie_paths:
+            # Extract metadata from directory name
+            title, year = self._extract_movie_metadata(movie_path)
+
+            # Search TMDB for trailers
+            youtube_urls = self.search_for_movie_trailer(title, year)
+
+            # Store results
+            results[movie_path] = youtube_urls
+
+        # Summary statistics
+        found_count = sum(1 for urls in results.values() if urls)
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.info(
+            f"TMDB search complete: {found_count}/{len(movie_paths)} movies have trailers"
+        )
+
+        return results
+
+    def search_trailers_for_tvshows(self, tvshow_paths: list[Path]) -> dict[Path, list[str]]:
+        """Search TMDB for trailers for multiple TV shows.
+
+        Extracts metadata from each TV show directory path and searches TMDB for trailers.
+        This is a batch operation that processes multiple TV shows efficiently.
+
+        Args:
+            tvshow_paths: List of TV show directory paths without trailers.
+
+        Returns:
+            Dictionary mapping TV show path to list of YouTube URLs.
+            Paths with no trailers found map to empty list.
+
+        Example:
+            >>> scraper = YoutubeTrailerScraper()
+            >>> paths = [Path("/tvshows/Breaking Bad"), Path("/tvshows/The Wire (2002)")]
+            >>> results = scraper.search_trailers_for_tvshows(paths)
+            >>> for path, urls in results.items():
+            ...     print(f"{path.name}: {len(urls)} trailers")
+        """
+        results = {}
+
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.info(f"Searching TMDB for {len(tvshow_paths)} TV shows...")
+
+        for tvshow_path in tvshow_paths:
+            # Extract metadata from directory name
+            title, year = self._extract_tvshow_metadata(tvshow_path)
+
+            # Search TMDB for trailers
+            youtube_urls = self.search_for_tvshow_trailer(title, year)
+
+            # Store results
+            results[tvshow_path] = youtube_urls
+
+        # Summary statistics
+        found_count = sum(1 for urls in results.values() if urls)
+        # pylint: disable=logging-fstring-interpolation
+        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        self.logger.info(
+            f"TMDB search complete: {found_count}/{len(tvshow_paths)} TV shows have trailers"
+        )
+
+        return results
 
     def clear_cache(self) -> None:
         """Clear the cache for all scanners.
