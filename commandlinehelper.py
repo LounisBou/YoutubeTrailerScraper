@@ -8,20 +8,6 @@ import argparse
 import os
 import sys
 
-# Mapping of print levels to colors
-DEBUG = "debug"
-INFO = "info"
-WARNING = "warning"
-ERROR = "error"
-SUCCESS = "success"
-PRINT_LEVELS_COLORS = {
-    DEBUG: "cyan",
-    INFO: "white",
-    WARNING: "yellow",
-    ERROR: "red",
-    SUCCESS: "green",
-}
-
 # Colored output using termcolor (fallback to plain text if unavailable)
 try:  # pylint: disable=import-outside-toplevel
     from termcolor import colored  # pylint: disable=import-error
@@ -80,21 +66,6 @@ def _colorize(text: str, color: str | None, enabled: bool, attrs: list[str] | No
     if not enabled or not color:
         return text
     return colored(text, color, attrs=attrs or [])
-
-
-def print_message(text: str, level: str = INFO) -> None:
-    """
-    Print text with color based on level.
-    Args:
-        text: The text to print.
-        level: The log level (DEBUG, INFO, WARNING, ERROR, SUCCESS).
-    """
-
-    color = PRINT_LEVELS_COLORS.get(level, "white")
-    stream = sys.stdout if level in (DEBUG, INFO, SUCCESS) else sys.stderr
-    enabled = USE_COLOR_STDOUT if stream is sys.stdout else USE_COLOR_STDERR
-    print(_colorize(text, color, enabled), file=stream)
-    stream.flush()
 
 
 def format_scan_results(
@@ -230,13 +201,6 @@ def set_default_args_values(args: argparse.Namespace) -> argparse.Namespace:
 
 
 __all__ = [
-    "DEBUG",
-    "INFO",
-    "WARNING",
-    "ERROR",
-    "SUCCESS",
-    "PRINT_LEVELS_COLORS",
-    "print_message",
     "format_scan_results",
     "parse_args",
     "check_args",

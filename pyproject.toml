@@ -109,6 +109,8 @@ pretty = true
 #   "ignore:.*audioop.*is deprecated.*:DeprecationWarning:pydub.utils",
 # ]
 
-# Pylint supports pyproject in recent versions. Example (optional):
-# [tool.pylint."MESSAGES CONTROL"]
-# disable = ["C0114", "C0115", "C0116"]
+# Pylint configuration
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "logging-fstring-interpolation",  # W1203: Allow f-strings in logging calls
+]
