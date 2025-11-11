@@ -203,13 +203,13 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             cookies_file=self.youtube_cookies_file or None,
         )
 
-        if self.youtube_cookies_from_browser:
+        if self.youtube_cookies_from_browser:  # pragma: no cover
             # pylint: disable=logging-fstring-interpolation
             self.logger.debug(
                 f"YouTube downloader configured with cookies from:"
                 f" {self.youtube_cookies_from_browser}"
             )
-        elif self.youtube_cookies_file:
+        elif self.youtube_cookies_file:  # pragma: no cover
             # pylint: disable=logging-fstring-interpolation
             self.logger.debug(
                 f"YouTube downloader configured with cookies file:" f" {self.youtube_cookies_file}"

@@ -172,7 +172,8 @@ class YoutubeDownloader:
                 downloaded_paths.append(downloaded_path)
 
         self.logger.info(
-            f"Downloaded {len(downloaded_paths)}/{len(urls_to_download)} trailers for: {movie_name}"
+            f"Downloaded {len(downloaded_paths)}/{len(urls_to_download)}"
+            f" trailers for: {movie_name}"
         )
         return downloaded_paths
 

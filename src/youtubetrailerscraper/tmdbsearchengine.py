@@ -30,9 +30,9 @@ import time
 import unicodedata
 from typing import Any, Optional
 from urllib.parse import urljoin
-from pymate import CacheIt
 
 import requests
+from pymate import CacheIt
 
 
 class TMDBSearchEngine:
