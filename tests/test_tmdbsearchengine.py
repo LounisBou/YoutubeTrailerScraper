@@ -54,6 +54,47 @@ class TestTMDBSearchEngineInit:
             TMDBSearchEngine(api_key=None)
 
 
+class TestTMDBSearchEngineNormalizeTitle:
+    """Test TMDBSearchEngine._normalize_title method."""
+
+    def test_normalize_title_removes_accents(self):
+        """Test that accents are removed from title."""
+        result = TMDBSearchEngine._normalize_title("Astérix & Obélix")
+        assert "é" not in result
+        assert "Asterix" in result
+
+    def test_normalize_title_replaces_ampersand(self):
+        """Test that ampersand is replaced with 'and'."""
+        result = TMDBSearchEngine._normalize_title("Astérix & Obélix")
+        assert "&" not in result
+        assert "and" in result
+
+    def test_normalize_title_complex_french_title(self):
+        """Test normalization of complex French title with multiple accents."""
+        result = TMDBSearchEngine._normalize_title("Ant-Man et la Guêpe Quantumania")
+        assert result == "Ant-Man et la Guepe Quantumania"
+
+    def test_normalize_title_asterix_against_caesar(self):
+        """Test normalization of Astérix & Obélix contre César."""
+        result = TMDBSearchEngine._normalize_title("Astérix & Obélix contre César")
+        assert result == "Asterix and Obelix contre Cesar"
+
+    def test_normalize_title_no_change_needed(self):
+        """Test that titles without special characters remain unchanged."""
+        result = TMDBSearchEngine._normalize_title("Inception")
+        assert result == "Inception"
+
+    def test_normalize_title_normalizes_whitespace(self):
+        """Test that extra whitespace is normalized."""
+        result = TMDBSearchEngine._normalize_title("Too    Many   Spaces")
+        assert result == "Too Many Spaces"
+
+    def test_normalize_title_various_accents(self):
+        """Test removal of various French accents (é, è, ê, à, ù, etc.)."""
+        result = TMDBSearchEngine._normalize_title("Café à l'hôtel")
+        assert result == "Cafe a l'hotel"
+
+
 class TestTMDBSearchEngineMakeRequest:
     """Test TMDBSearchEngine._make_request method."""
 

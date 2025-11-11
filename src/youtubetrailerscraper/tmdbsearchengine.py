@@ -27,6 +27,7 @@ References:
 from __future__ import annotations
 
 import time
+import unicodedata
 from typing import Any, Optional
 from urllib.parse import urljoin
 
@@ -80,6 +81,37 @@ class TMDBSearchEngine:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.languages = languages if languages else ["en-US"]
+
+    @staticmethod
+    def _normalize_title(title: str) -> str:
+        """Normalize title by removing accents and replacing special characters.
+
+        This helps improve TMDB search matching for titles with special characters
+        and accents (e.g., "Astérix" → "Asterix", "& " → "and ").
+
+        Args:
+            title: Original title string to normalize.
+
+        Returns:
+            Normalized title with accents removed and special characters replaced.
+
+        Example:
+            >>> TMDBSearchEngine._normalize_title("Astérix & Obélix")
+            'Asterix and Obelix'
+        """
+        # Remove accents using Unicode normalization
+        # NFD = Canonical Decomposition (separates base char from accent)
+        nfd_form = unicodedata.normalize("NFD", title)
+        # Keep only non-combining characters (removes accents)
+        without_accents = "".join(char for char in nfd_form if unicodedata.category(char) != "Mn")
+
+        # Replace common special characters
+        normalized = without_accents.replace("&", "and")
+
+        # Normalize whitespace
+        normalized = " ".join(normalized.split())
+
+        return normalized
 
     def _make_request(
         self, endpoint: str, params: Optional[dict[str, Any]] = None
@@ -135,6 +167,10 @@ class TMDBSearchEngine:
     ) -> tuple[Optional[int], list[dict]]:
         """Search for movie with a specific language setting.
 
+        Tries searching with the original title first. If no results are found,
+        attempts a second search with normalized title (accents removed, special
+        characters replaced) to improve matching.
+
         Args:
             title: Movie title to search for.
             year: Optional release year.
@@ -156,6 +192,17 @@ class TMDBSearchEngine:
         print(f"TMDB search results: {results}")  # Debug print
         print("----------------------------\n\n")  # Debug print
 
+        # If no results with original title, try with normalized title
+        if not results:
+            normalized_title = self._normalize_title(title)
+            # Only retry if normalized title is different from original
+            if normalized_title != title:
+                print(f"Retrying with normalized title: '{normalized_title}'")  # Debug print
+                search_params["query"] = normalized_title
+                search_results = self._make_request("/search/movie", search_params)
+                results = search_results.get("results", [])
+                print(f"Normalized search results: {results}")  # Debug print
+
         if not results:
             return None, []
 
@@ -174,6 +221,10 @@ class TMDBSearchEngine:
     ) -> tuple[Optional[int], list[dict]]:
         """Search for TV show with a specific language setting.
 
+        Tries searching with the original title first. If no results are found,
+        attempts a second search with normalized title (accents removed, special
+        characters replaced) to improve matching.
+
         Args:
             title: TV show title to search for.
             year: Optional first air year.
@@ -188,6 +239,15 @@ class TMDBSearchEngine:
 
         search_results = self._make_request("/search/tv", search_params)
         results = search_results.get("results", [])
+
+        # If no results with original title, try with normalized title
+        if not results:
+            normalized_title = self._normalize_title(title)
+            # Only retry if normalized title is different from original
+            if normalized_title != title:
+                search_params["query"] = normalized_title
+                search_results = self._make_request("/search/tv", search_params)
+                results = search_results.get("results", [])
 
         if not results:
             return None, []
