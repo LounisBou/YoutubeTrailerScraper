@@ -36,6 +36,7 @@ from dotenv import load_dotenv
 from youtubetrailerscraper.moviescanner import MovieScanner
 from youtubetrailerscraper.tmdbsearchengine import TMDBSearchEngine
 from youtubetrailerscraper.tvshowscanner import TVShowScanner
+from youtubetrailerscraper.youtubedownloader import YoutubeDownloader
 
 
 class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
@@ -84,6 +85,9 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             base_url=self.tmdb_api_base_url,
             languages=self.tmdb_languages,
         )
+
+        # Initialize YouTube downloader
+        self.youtube_downloader = YoutubeDownloader(logger=self.logger)
 
     def _load_environment_variables(self, env_file: Optional[str] = None) -> None:
         """
@@ -623,6 +627,98 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         )
 
         return results
+
+    def download_trailers_for_movies(
+        self, trailer_results: dict[Path, list[str]]
+    ) -> dict[Path, list[Path]]:
+        """Download trailers for multiple movies.
+
+        Takes the results from search_trailers_for_movies and downloads each trailer
+        to the corresponding movie directory.
+
+        Args:
+            trailer_results: Dictionary mapping movie paths to lists of YouTube URLs.
+
+        Returns:
+            Dictionary mapping movie paths to lists of downloaded file paths.
+            Paths with no successful downloads map to empty list.
+
+        Example:
+            >>> scraper = YoutubeTrailerScraper()
+            >>> search_results = scraper.search_trailers_for_movies(movie_paths)
+            >>> downloads = scraper.download_trailers_for_movies(search_results)
+            >>> for path, files in downloads.items():
+            ...     print(f"{path.name}: {len(files)} trailers downloaded")
+        """
+        download_results: dict[Path, list[Path]] = {}
+        total_urls = sum(len(urls) for urls in trailer_results.values())
+
+        # pylint: disable=logging-fstring-interpolation
+        self.logger.info(f"Downloading {total_urls} trailers for {len(trailer_results)} movies...")
+
+        for movie_path, youtube_urls in trailer_results.items():
+            if not youtube_urls:
+                download_results[movie_path] = []
+                continue
+
+            downloaded_paths = self.youtube_downloader.download_trailers_for_movie(
+                movie_path, youtube_urls
+            )
+            download_results[movie_path] = downloaded_paths
+
+        # Summary statistics
+        total_downloaded = sum(len(paths) for paths in download_results.values())
+        # pylint: disable=logging-fstring-interpolation
+        self.logger.info(f"Download complete: {total_downloaded}/{total_urls} trailers downloaded")
+
+        return download_results
+
+    def download_trailers_for_tvshows(
+        self, trailer_results: dict[Path, list[str]]
+    ) -> dict[Path, list[Path]]:
+        """Download trailers for multiple TV shows.
+
+        Takes the results from search_trailers_for_tvshows and downloads each trailer
+        to the corresponding TV show's trailers subdirectory.
+
+        Args:
+            trailer_results: Dictionary mapping TV show paths to lists of YouTube URLs.
+
+        Returns:
+            Dictionary mapping TV show paths to lists of downloaded file paths.
+            Paths with no successful downloads map to empty list.
+
+        Example:
+            >>> scraper = YoutubeTrailerScraper()
+            >>> search_results = scraper.search_trailers_for_tvshows(tvshow_paths)
+            >>> downloads = scraper.download_trailers_for_tvshows(search_results)
+            >>> for path, files in downloads.items():
+            ...     print(f"{path.name}: {len(files)} trailers downloaded")
+        """
+        download_results: dict[Path, list[Path]] = {}
+        total_urls = sum(len(urls) for urls in trailer_results.values())
+
+        # pylint: disable=logging-fstring-interpolation
+        self.logger.info(
+            f"Downloading {total_urls} trailers for {len(trailer_results)} TV shows..."
+        )
+
+        for tvshow_path, youtube_urls in trailer_results.items():
+            if not youtube_urls:
+                download_results[tvshow_path] = []
+                continue
+
+            downloaded_paths = self.youtube_downloader.download_trailers_for_tvshow(
+                tvshow_path, youtube_urls
+            )
+            download_results[tvshow_path] = downloaded_paths
+
+        # Summary statistics
+        total_downloaded = sum(len(paths) for paths in download_results.values())
+        # pylint: disable=logging-fstring-interpolation
+        self.logger.info(f"Download complete: {total_downloaded}/{total_urls} trailers downloaded")
+
+        return download_results
 
     def clear_cache(self) -> None:
         """Clear the cache for all scanners.
