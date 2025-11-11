@@ -175,6 +175,125 @@ def _display_scan_results(
         logger.warning(f"\n⚠ Scan complete: {total_missing} items missing trailers")
 
 
+def _display_media_search_results(media_type: str, results: dict, verbose: bool, logger: LogIt):
+    """Display search results for movies or TV shows.
+
+    Args:
+        media_type: Type of media ("Movie" or "TV Show").
+        results: Dictionary mapping media paths to YouTube URLs.
+        verbose: If True, show full URLs in output.
+        logger: Logger instance for logging messages.
+
+    Returns:
+        Number of items found.
+    """
+    logger.info(f"\n{'-' * 44}")
+    logger.info(f"{media_type} Search Results:")
+    logger.info(f"{'-' * 44}")
+
+    for media_path, youtube_urls in results.items():
+        media_name = media_path.name if hasattr(media_path, "name") else str(media_path)
+        if youtube_urls:
+            logger.success(f"✓ {media_name}")
+            for idx, url in enumerate(youtube_urls, 1):
+                if verbose:
+                    logger.info(f"    {idx}. {url}")
+                else:
+                    # Extract video ID for shorter display
+                    video_id = url.split("=")[-1] if "=" in url else url
+                    logger.info(f"    {idx}. youtube.com/watch?v={video_id}")
+        else:
+            logger.warning(f"✗ {media_name} - No TMDB trailers found")
+
+    items_found = sum(1 for urls in results.values() if urls)
+    return items_found
+
+
+def _search_movies_on_tmdb(scraper, movies_without_trailers, verbose: bool, logger: LogIt):
+    """Search TMDB for movie trailers.
+
+    Args:
+        scraper: YoutubeTrailerScraper instance.
+        movies_without_trailers: List of movie directories without trailers.
+        verbose: If True, show full URLs in output.
+        logger: Logger instance for logging messages.
+
+    Returns:
+        Tuple of (movie_results dict, movies_found count).
+    """
+    if not movies_without_trailers:
+        logger.info("No movies to search (all movies have trailers)")
+        return {}, 0
+
+    logger.info("Searching TMDB for movie trailers...")
+    movie_results = scraper.search_trailers_for_movies(movies_without_trailers)
+    movies_found = _display_media_search_results("Movie", movie_results, verbose, logger)
+    logger.info(f"\n  Movies: {movies_found}/{len(movies_without_trailers)} found on TMDB")
+    return movie_results, movies_found
+
+
+def _search_tvshows_on_tmdb(scraper, tvshows_without_trailers, verbose: bool, logger: LogIt):
+    """Search TMDB for TV show trailers.
+
+    Args:
+        scraper: YoutubeTrailerScraper instance.
+        tvshows_without_trailers: List of TV show directories without trailers.
+        verbose: If True, show full URLs in output.
+        logger: Logger instance for logging messages.
+
+    Returns:
+        Tuple of (tvshow_results dict, tvshows_found count).
+    """
+    if not tvshows_without_trailers:
+        logger.info("\nNo TV shows to search (all TV shows have trailers)")
+        return {}, 0
+
+    logger.info("\nSearching TMDB for TV show trailers...")
+    tvshow_results = scraper.search_trailers_for_tvshows(tvshows_without_trailers)
+    tvshows_found = _display_media_search_results("TV Show", tvshow_results, verbose, logger)
+    logger.info(f"\n  TV Shows: {tvshows_found}/{len(tvshows_without_trailers)} found on TMDB")
+    return tvshow_results, tvshows_found
+
+
+def _search_and_display_tmdb_results(
+    scraper,
+    movies_without_trailers,
+    tvshows_without_trailers,
+    verbose: bool,
+    logger: LogIt | None = None,
+):
+    """Search TMDB for trailers and display results.
+
+    Args:
+        scraper: YoutubeTrailerScraper instance.
+        movies_without_trailers: List of movie directories without trailers.
+        tvshows_without_trailers: List of TV show directories without trailers.
+        verbose: If True, show full URLs in output.
+        logger: Logger instance for logging messages.
+    """
+    if logger is None:
+        log_level = logging.DEBUG if verbose else logging.INFO
+        logger = LogIt(name="youtubetrailerscraper", level=log_level, console=True, file=False)
+
+    logger.info(f"\n{'=' * 60}")
+    logger.info("TMDB Integration Test - Step 4a")
+    logger.info(f"{'=' * 60}\n")
+
+    # Search for movie trailers
+    _, movies_found = _search_movies_on_tmdb(scraper, movies_without_trailers, verbose, logger)
+
+    # Search for TV show trailers
+    _, tvshows_found = _search_tvshows_on_tmdb(scraper, tvshows_without_trailers, verbose, logger)
+
+    # Overall summary
+    total_searched = len(movies_without_trailers) + len(tvshows_without_trailers)
+    total_found = movies_found + tvshows_found
+
+    logger.info(f"\n{'=' * 60}")
+    logger.info(f"TMDB Search Summary: {total_found}/{total_searched} items found trailers")
+    logger.info(f"{'=' * 60}")
+
+
 def _main() -> int:
     """Command-line interface main function.
 
@@ -225,12 +344,20 @@ def _main() -> int:
             scraper, use_sample=args.scan_sample, logger=logger
         )
 
-        # Display results
+        # Display scan results
         _display_scan_results(
             movies_without_trailers, tvshows_without_trailers, args.verbose, logger=logger
         )
 
-        # Note: Steps 2-4 (TMDB search, YouTube fallback, download) will be implemented later
+        # Automatically search TMDB for trailers if there are missing trailers (Step 4a)
+        if movies_without_trailers or tvshows_without_trailers:
+            _search_and_display_tmdb_results(
+                scraper,
+                movies_without_trailers,
+                tvshows_without_trailers,
+                args.verbose,
+                logger=logger,
+            )
 
     except Exception as e:  # pylint: disable=broad-except
         logger.error(f"An error occurred: {e}")

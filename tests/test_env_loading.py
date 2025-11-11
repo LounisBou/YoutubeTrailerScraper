@@ -20,6 +20,7 @@ def test_env_loading_with_valid_file():
         f.write("TMDB_API_BASE_URL=https://api.themoviedb.org/3\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write("USE_SMB_MOUNT=false\n")  # Explicitly disable SMB mount
         env_file = f.name
 
     try:
@@ -67,6 +68,8 @@ def test_env_loading_with_defaults():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write("USE_SMB_MOUNT=false\n")  # Explicitly disable SMB mount
+        f.write("SMB_MOUNT_POINT=\n")  # Explicitly set empty SMB mount point
         env_file = f.name
 
     try:
@@ -115,6 +118,51 @@ def test_env_loading_path_list_not_list_type():
         os.unlink(env_file)
 
 
+def test_env_loading_string_list_syntax_error():
+    """Test that ValueError is raised when string list has syntax error."""
+    # Create a temporary .env file with invalid Python syntax
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write("TMDB_LANGUAGES=['en-US',]\n")  # Trailing comma is OK, but use malformed one
+        f.write = lambda _: None  # This won't work, but let's try unbalanced brackets
+        env_file = f.name
+
+    try:
+        # Actually write invalid syntax manually
+        with open(env_file, "w", encoding="utf-8") as f:
+            f.write("TMDB_API_KEY=test_api_key\n")
+            f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+            f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+            f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+            f.write("TMDB_LANGUAGES=['en-US'\n")  # Unbalanced brackets - syntax error
+
+        with pytest.raises(ValueError, match="Invalid list format"):
+            YoutubeTrailerScraper(env_file=env_file)
+    finally:
+        os.unlink(env_file)
+
+
+def test_env_loading_string_list_not_list():
+    """Test that ValueError is raised when string list is not a list type."""
+    # Create a temporary .env file with a number instead of list for TMDB_LANGUAGES
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write("TMDB_LANGUAGES=123\n")  # Number instead of list
+        env_file = f.name
+
+    try:
+        with pytest.raises(ValueError, match="Value must be a Python list"):
+            YoutubeTrailerScraper(env_file=env_file)
+    finally:
+        os.unlink(env_file)
+
+
 def test_env_loading_missing_file():
     """Test that FileNotFoundError is raised when .env file doesn't exist."""
     with pytest.raises(FileNotFoundError, match="Environment file not found"):
@@ -128,6 +176,7 @@ def test_smb_mount_with_env_variable():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/Volumes/Disk1/medias/films/", "/Volumes/Disk2/medias/films/"]\n')
         f.write('TVSHOWS_PATHS=["/Volumes/Disk1/medias/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SMB_MOUNT_POINT=/Volumes/MediaServer\n")
         f.write("USE_SMB_MOUNT=true\n")
         env_file = f.name
@@ -155,6 +204,7 @@ def test_smb_mount_with_constructor_flag():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/Volumes/Disk1/medias/films/"]\n')
         f.write('TVSHOWS_PATHS=["/Volumes/Disk1/medias/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SMB_MOUNT_POINT=/Volumes/MediaServer\n")
         env_file = f.name
 
@@ -178,6 +228,7 @@ def test_smb_mount_disabled():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/Volumes/Disk1/medias/films/"]\n')
         f.write('TVSHOWS_PATHS=["/Volumes/Disk1/medias/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SMB_MOUNT_POINT=/Volumes/MediaServer\n")
         f.write("USE_SMB_MOUNT=false\n")
         env_file = f.name
@@ -200,6 +251,7 @@ def test_smb_mount_env_overrides_constructor():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/Volumes/Disk1/medias/films/"]\n')
         f.write('TVSHOWS_PATHS=["/Volumes/Disk1/medias/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SMB_MOUNT_POINT=/Volumes/MediaServer\n")
         f.write("USE_SMB_MOUNT=true\n")
         env_file = f.name
@@ -223,6 +275,7 @@ def test_scan_sample_size_valid():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SCAN_SAMPLE_SIZE=100\n")
         env_file = f.name
 
@@ -240,6 +293,7 @@ def test_scan_sample_size_invalid():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SCAN_SAMPLE_SIZE=not_a_number\n")
         env_file = f.name
 

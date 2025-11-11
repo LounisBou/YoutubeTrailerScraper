@@ -46,12 +46,21 @@ USE_SMB_MOUNT=false
 
 
 def run_cli_with_env(env_file: str, *args: str) -> subprocess.CompletedProcess[str]:
-    """Run the CLI with a custom .env file."""
+    """Run the CLI with a custom .env file.
+
+    IMPORTANT: This function temporarily replaces .env in the project root.
+    It creates a backup and restores it in a finally block to ensure safety.
+    """
     # Backup original .env if it exists
     env_backup = None
-    if Path(".env").exists():
+    original_env = Path(".env")
+
+    if original_env.exists():
         env_backup = Path(".env.backup_test")
-        Path(".env").rename(env_backup)
+        # Use shutil.copy2 to preserve metadata, then delete original
+        # This is safer than rename in case of permission issues
+        shutil.copy2(original_env, env_backup)
+        original_env.unlink()
 
     try:
         # Copy test env to .env
@@ -63,11 +72,15 @@ def run_cli_with_env(env_file: str, *args: str) -> subprocess.CompletedProcess[s
         )
         return result
     finally:
-        # Restore original .env
-        if Path(".env").exists():
-            Path(".env").unlink()
+        # Always restore original .env, even if test fails
+        # Delete test .env first
+        if original_env.exists():
+            original_env.unlink()
+
+        # Restore backup if it exists
         if env_backup and env_backup.exists():
-            env_backup.rename(".env")
+            shutil.copy2(env_backup, original_env)
+            env_backup.unlink()  # Clean up backup file
 
 
 def test_cli_help() -> None:

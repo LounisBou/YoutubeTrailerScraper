@@ -27,6 +27,7 @@ TMDB_API_KEY=test_key
 TMDB_READ_ACCESS_TOKEN=test_token
 MOVIES_PATHS=['{movies_dir}']
 TVSHOWS_PATHS=[]
+USE_SMB_MOUNT=false
 """.strip()
     env_file.write_text(env_content)
 
@@ -197,6 +198,7 @@ TMDB_API_KEY=test_key
 TMDB_READ_ACCESS_TOKEN=test_token
 MOVIES_PATHS=['{movies_dir1}']
 TVSHOWS_PATHS=[]
+USE_SMB_MOUNT=false
 """.strip()
         )
 
@@ -207,6 +209,7 @@ TMDB_API_KEY=test_key
 TMDB_READ_ACCESS_TOKEN=test_token
 MOVIES_PATHS=['{movies_dir2}']
 TVSHOWS_PATHS=[]
+USE_SMB_MOUNT=false
 """.strip()
         )
 

@@ -16,6 +16,7 @@ def test_scan_for_movies_without_trailers_empty_paths():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write("MOVIES_PATHS=[]\n")
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         env_file = f.name
 
     try:
@@ -39,6 +40,7 @@ def test_scan_for_movies_with_sample_mode(tmp_path):
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write(f'MOVIES_PATHS=["{str(tmp_path)}/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SCAN_SAMPLE_SIZE=3\n")
         f.write("USE_SMB_MOUNT=false\n")  # Disable SMB mount
         env_file = f.name
@@ -59,6 +61,7 @@ def test_scan_for_tvshows_without_trailers_empty_paths():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write("TVSHOWS_PATHS=[]\n")
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         env_file = f.name
 
     try:
@@ -83,9 +86,11 @@ def test_scan_for_tvshows_with_sample_mode(tmp_path):
         f.write("TMDB_API_KEY=test_api_key\n")
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
-        f.write(f'TVSHOWS_PATHS=["{str(tmp_path)}/"]\n')
+        f.write(f'TVSHOWS_PATHS=["{tmp_path}/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SCAN_SAMPLE_SIZE=3\n")
         f.write("USE_SMB_MOUNT=false\n")  # Disable SMB mount
+        f.write("TVSHOWS_SEASON_SUBDIR_PATTERN=Season {season_number}\n")  # Match test data
         env_file = f.name
 
     try:
@@ -104,6 +109,7 @@ def test_clear_cache():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         env_file = f.name
 
     try:
@@ -114,19 +120,33 @@ def test_clear_cache():
         os.unlink(env_file)
 
 
-def test_search_for_movie_trailer():
-    """Test the search_for_movie_trailer method."""
+def test_search_for_movie_trailer(mocker):
+    """Test the search_for_movie_trailer method with mocked TMDB search engine."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("TMDB_API_KEY=test_api_key\n")
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
         env_file = f.name
 
     try:
         scraper = YoutubeTrailerScraper(env_file=env_file)
-        # Test the method returns empty list (TODO stub implementation)
+
+        # Mock the TMDBSearchEngine.search_movie method
+        mock_search = mocker.patch.object(
+            scraper.tmdb_search_engine,
+            "search_movie",
+            return_value=["https://www.youtube.com/watch?v=test123"],
+        )
+
+        # Test the method calls TMDBSearchEngine and returns results
         result = scraper.search_for_movie_trailer("Test Movie", 2020)
-        assert not result
+
+        # Verify TMDBSearchEngine.search_movie was called
+        mock_search.assert_called_once_with("Test Movie", 2020)
+
+        # Verify results
+        assert result == ["https://www.youtube.com/watch?v=test123"]
     finally:
         os.unlink(env_file)
