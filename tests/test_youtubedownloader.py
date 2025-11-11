@@ -177,6 +177,35 @@ class TestYoutubeDownloaderMovieTrailers:
         assert len(result) == 1
         assert result[0].name == "Test Movie (2020) - trailer #1 -trailer.mp4"
 
+    @patch("yt_dlp.YoutubeDL")
+    def test_download_trailers_for_movie_limits_to_max_trailers(self, mock_ytdl, tmp_path):
+        """Test download_trailers_for_movie limits downloads to MAX_TRAILERS_PER_MEDIA."""
+        mock_instance = MagicMock()
+        mock_ytdl.return_value.__enter__.return_value = mock_instance
+
+        movie_dir = tmp_path / "Popular Movie (2023)"
+        movie_dir.mkdir()
+
+        downloader = YoutubeDownloader()
+        # Provide 5 URLs, but only 3 should be downloaded
+        urls = [
+            "https://youtube.com/watch?v=url1",
+            "https://youtube.com/watch?v=url2",
+            "https://youtube.com/watch?v=url3",
+            "https://youtube.com/watch?v=url4",
+            "https://youtube.com/watch?v=url5",
+        ]
+        result = downloader.download_trailers_for_movie(movie_dir, urls)
+
+        # Should only download first 3 trailers (MAX_TRAILERS_PER_MEDIA = 3)
+        assert len(result) == 3
+        assert result[0].name == "Popular Movie (2023) - trailer #1 -trailer.mp4"
+        assert result[1].name == "Popular Movie (2023) - trailer #2 -trailer.mp4"
+        assert result[2].name == "Popular Movie (2023) - trailer #3 -trailer.mp4"
+
+        # Verify only 3 download calls were made
+        assert mock_instance.download.call_count == 3
+
 
 class TestYoutubeDownloaderTVShowTrailers:
     """Tests for download_trailers_for_tvshow method."""
@@ -266,3 +295,33 @@ class TestYoutubeDownloaderTVShowTrailers:
         assert len(result) == 2
         assert result[0].name == "trailer #1.mp4"
         assert result[1].name == "trailer #2.mp4"
+
+    @patch("yt_dlp.YoutubeDL")
+    def test_download_trailers_for_tvshow_limits_to_max_trailers(self, mock_ytdl, tmp_path):
+        """Test download_trailers_for_tvshow limits downloads to MAX_TRAILERS_PER_MEDIA."""
+        mock_instance = MagicMock()
+        mock_ytdl.return_value.__enter__.return_value = mock_instance
+
+        tvshow_dir = tmp_path / "Popular Series"
+        tvshow_dir.mkdir()
+
+        downloader = YoutubeDownloader()
+        # Provide 6 URLs, but only 3 should be downloaded
+        urls = [
+            "https://youtube.com/watch?v=url1",
+            "https://youtube.com/watch?v=url2",
+            "https://youtube.com/watch?v=url3",
+            "https://youtube.com/watch?v=url4",
+            "https://youtube.com/watch?v=url5",
+            "https://youtube.com/watch?v=url6",
+        ]
+        result = downloader.download_trailers_for_tvshow(tvshow_dir, urls)
+
+        # Should only download first 3 trailers (MAX_TRAILERS_PER_MEDIA = 3)
+        assert len(result) == 3
+        assert result[0].name == "trailer #1.mp4"
+        assert result[1].name == "trailer #2.mp4"
+        assert result[2].name == "trailer #3.mp4"
+
+        # Verify only 3 download calls were made
+        assert mock_instance.download.call_count == 3

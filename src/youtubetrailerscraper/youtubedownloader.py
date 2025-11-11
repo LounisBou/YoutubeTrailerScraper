@@ -32,6 +32,9 @@ import yt_dlp
 class YoutubeDownloader:
     """Download videos from YouTube from given URLs using yt-dlp."""
 
+    # Maximum number of trailers to download per movie or TV show
+    MAX_TRAILERS_PER_MEDIA = 3
+
     def __init__(self, logger: Optional[logging.Logger] = None):
         """Initialize YoutubeDownloader.
 
@@ -106,7 +109,7 @@ class YoutubeDownloader:
     def download_trailers_for_movie(self, movie_path: Path, youtube_urls: list[str]) -> list[Path]:
         """Download trailers for a movie to its directory.
 
-        Downloads all trailers to the same directory as the movie file.
+        Downloads up to MAX_TRAILERS_PER_MEDIA trailers to the same directory as the movie file.
         Filenames follow pattern: "{movie_name} - trailer #N -trailer.mp4"
 
         Args:
@@ -115,6 +118,7 @@ class YoutubeDownloader:
 
         Returns:
             List of Path objects for successfully downloaded trailers.
+            Limited to MAX_TRAILERS_PER_MEDIA (3) trailers maximum.
 
         Example:
             >>> downloader = YoutubeDownloader()
@@ -129,17 +133,25 @@ class YoutubeDownloader:
         if not youtube_urls:
             return []
 
+        # Limit to MAX_TRAILERS_PER_MEDIA
+        urls_to_download = youtube_urls[: self.MAX_TRAILERS_PER_MEDIA]
+        if len(youtube_urls) > self.MAX_TRAILERS_PER_MEDIA:
+            self.logger.info(
+                f"Limiting download to {self.MAX_TRAILERS_PER_MEDIA} trailers "
+                f"(found {len(youtube_urls)} available)"
+            )
+
         movie_name = movie_path.name
         downloaded_paths = []
 
-        for idx, url in enumerate(youtube_urls, start=1):
+        for idx, url in enumerate(urls_to_download, start=1):
             filename = f"{movie_name} - trailer #{idx} -trailer"
             downloaded_path = self.download(url, movie_path, filename)
             if downloaded_path:
                 downloaded_paths.append(downloaded_path)
 
         self.logger.info(
-            f"Downloaded {len(downloaded_paths)}/{len(youtube_urls)} trailers for: {movie_name}"
+            f"Downloaded {len(downloaded_paths)}/{len(urls_to_download)} trailers for: {movie_name}"
         )
         return downloaded_paths
 
@@ -148,8 +160,8 @@ class YoutubeDownloader:
     ) -> list[Path]:
         """Download trailers for a TV show to its trailers subdirectory.
 
-        Creates a "trailers" subdirectory if it doesn't exist and downloads all
-        trailers there. Filenames follow pattern: "trailer #N.mp4"
+        Creates a "trailers" subdirectory if it doesn't exist and downloads up to
+        MAX_TRAILERS_PER_MEDIA trailers there. Filenames follow pattern: "trailer #N.mp4"
 
         Args:
             tvshow_path: Path to the TV show directory.
@@ -157,6 +169,7 @@ class YoutubeDownloader:
 
         Returns:
             List of Path objects for successfully downloaded trailers.
+            Limited to MAX_TRAILERS_PER_MEDIA (3) trailers maximum.
 
         Example:
             >>> downloader = YoutubeDownloader()
@@ -170,17 +183,26 @@ class YoutubeDownloader:
         if not youtube_urls:
             return []
 
+        # Limit to MAX_TRAILERS_PER_MEDIA
+        urls_to_download = youtube_urls[: self.MAX_TRAILERS_PER_MEDIA]
+        if len(youtube_urls) > self.MAX_TRAILERS_PER_MEDIA:
+            self.logger.info(
+                f"Limiting download to {self.MAX_TRAILERS_PER_MEDIA} trailers "
+                f"(found {len(youtube_urls)} available)"
+            )
+
         trailers_dir = tvshow_path / "trailers"
         tvshow_name = tvshow_path.name
         downloaded_paths = []
 
-        for idx, url in enumerate(youtube_urls, start=1):
+        for idx, url in enumerate(urls_to_download, start=1):
             filename = f"trailer #{idx}"
             downloaded_path = self.download(url, trailers_dir, filename)
             if downloaded_path:
                 downloaded_paths.append(downloaded_path)
 
         self.logger.info(
-            f"Downloaded {len(downloaded_paths)}/{len(youtube_urls)} trailers for: {tvshow_name}"
+            f"Downloaded {len(downloaded_paths)}/{len(urls_to_download)}"
+            f" trailers for: {tvshow_name}"
         )
         return downloaded_paths
