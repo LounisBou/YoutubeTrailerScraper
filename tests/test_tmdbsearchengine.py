@@ -11,6 +11,22 @@ import requests
 from youtubetrailerscraper.tmdbsearchengine import TMDBSearchEngine
 
 
+@pytest.fixture(autouse=True)
+def disable_tmdb_cache(monkeypatch):
+    """Disable TMDB cache for tests to avoid pickling issues with mocks."""
+    # Replace the cached methods with uncached versions for testing
+    # Access the unwrapped (uncached) versions of the methods
+    # pylint: disable=no-member  # __wrapped__ exists on CacheIt decorated methods
+    original_search_movie = TMDBSearchEngine.search_movie.__wrapped__
+    original_search_tv_show = TMDBSearchEngine.search_tv_show.__wrapped__
+
+    # Replace with unwrapped versions
+    monkeypatch.setattr(TMDBSearchEngine, "search_movie", original_search_movie)
+    monkeypatch.setattr(TMDBSearchEngine, "search_tv_show", original_search_tv_show)
+
+    yield
+
+
 class TestTMDBSearchEngineInit:
     """Test TMDBSearchEngine initialization."""
 

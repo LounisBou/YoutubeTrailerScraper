@@ -85,6 +85,34 @@ SMB_MOUNT_POINT=/Volumes/MediaServer
 
 See `.env.example` for a complete configuration template.
 
+### YouTube Authentication (Bypassing Bot Detection)
+
+YouTube may block yt-dlp downloads with bot detection errors. To fix this, configure cookie authentication in your `.env` file:
+
+**Option 1: Use Browser Cookies (Recommended)**
+
+Extract cookies directly from your browser where you're logged into YouTube:
+
+```env
+# Supported browsers: firefox, chrome, chromium, edge, opera, brave, safari
+YOUTUBE_COOKIES_FROM_BROWSER=firefox
+```
+
+**Option 2: Use Cookies File**
+
+Export cookies to a Netscape format file:
+
+1. Install a browser extension to export cookies (e.g., "Get cookies.txt LOCALLY" for Firefox/Chrome)
+2. Visit youtube.com while logged in
+3. Export cookies to a file
+4. Configure the path in `.env`:
+
+```env
+YOUTUBE_COOKIES_FILE=/path/to/cookies.txt
+```
+
+**Note**: The `YOUTUBE_COOKIES_FROM_BROWSER` option takes precedence if both are configured.
+
 ## Usage
 
 ```bash

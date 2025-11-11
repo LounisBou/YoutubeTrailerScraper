@@ -35,15 +35,28 @@ class YoutubeDownloader:
     # Maximum number of trailers to download per movie or TV show
     MAX_TRAILERS_PER_MEDIA = 3
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        logger: Optional[logging.Logger] = None,
+        cookies_from_browser: Optional[str] = None,
+        cookies_file: Optional[str] = None,
+    ):
         """Initialize YoutubeDownloader.
 
         Args:
             logger: Optional logger instance. If None, creates a NullHandler logger.
+            cookies_from_browser: Browser name to extract cookies from (e.g., "firefox", "chrome").
+                This helps bypass YouTube's bot detection. If provided, takes precedence over
+                cookies_file.
+            cookies_file: Path to Netscape format cookies file. Used if cookies_from_browser
+                is not provided.
         """
         self.logger = logger or logging.getLogger(__name__)
         if not logger:
             self.logger.addHandler(logging.NullHandler())
+
+        self.cookies_from_browser = cookies_from_browser
+        self.cookies_file = cookies_file
 
     def download(self, url: str, output_dir: Path, output_filename: str) -> Optional[Path]:
         """Download video from YouTube using yt-dlp.
@@ -95,6 +108,14 @@ class YoutubeDownloader:
             "no_warnings": True,
             "merge_output_format": "mp4",
         }
+
+        # Add cookie support to bypass YouTube bot detection
+        if self.cookies_from_browser:
+            ydl_opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
+            self.logger.debug(f"Using cookies from browser: {self.cookies_from_browser}")
+        elif self.cookies_file:
+            ydl_opts["cookiefile"] = self.cookies_file
+            self.logger.debug(f"Using cookies file: {self.cookies_file}")
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -151,7 +172,8 @@ class YoutubeDownloader:
                 downloaded_paths.append(downloaded_path)
 
         self.logger.info(
-            f"Downloaded {len(downloaded_paths)}/{len(urls_to_download)} trailers for: {movie_name}"
+            f"Downloaded {len(downloaded_paths)}/{len(urls_to_download)}"
+            f" trailers for: {movie_name}"
         )
         return downloaded_paths
 

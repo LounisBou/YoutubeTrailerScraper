@@ -16,12 +16,34 @@ class TestYoutubeDownloaderInit:
         downloader = YoutubeDownloader()
         assert downloader is not None
         assert downloader.logger is not None
+        assert downloader.cookies_from_browser is None
+        assert downloader.cookies_file is None
 
     def test_initialization_with_logger(self):
         """Test YoutubeDownloader initializes with custom logger."""
         mock_logger = MagicMock()
         downloader = YoutubeDownloader(logger=mock_logger)
         assert downloader.logger is mock_logger
+
+    def test_initialization_with_cookies_from_browser(self):
+        """Test YoutubeDownloader initializes with cookies_from_browser."""
+        downloader = YoutubeDownloader(cookies_from_browser="firefox")
+        assert downloader.cookies_from_browser == "firefox"
+        assert downloader.cookies_file is None
+
+    def test_initialization_with_cookies_file(self):
+        """Test YoutubeDownloader initializes with cookies_file."""
+        downloader = YoutubeDownloader(cookies_file="/path/to/cookies.txt")
+        assert downloader.cookies_file == "/path/to/cookies.txt"
+        assert downloader.cookies_from_browser is None
+
+    def test_initialization_with_both_cookies_options(self):
+        """Test YoutubeDownloader with both cookie options (browser takes precedence)."""
+        downloader = YoutubeDownloader(
+            cookies_from_browser="chrome", cookies_file="/path/to/cookies.txt"
+        )
+        assert downloader.cookies_from_browser == "chrome"
+        assert downloader.cookies_file == "/path/to/cookies.txt"
 
 
 class TestYoutubeDownloaderDownload:
@@ -105,6 +127,57 @@ class TestYoutubeDownloaderDownload:
         assert "1080" in opts["format"]
         assert opts["merge_output_format"] == "mp4"
         assert opts["quiet"] is True
+
+    @patch("yt_dlp.YoutubeDL")
+    def test_download_with_cookies_from_browser(self, mock_ytdl, tmp_path):
+        """Test download uses cookies_from_browser when configured."""
+        mock_instance = MagicMock()
+        mock_ytdl.return_value.__enter__.return_value = mock_instance
+
+        downloader = YoutubeDownloader(cookies_from_browser="firefox")
+        downloader.download("https://youtube.com/watch?v=abc123", tmp_path, "test-trailer")
+
+        # Verify cookiesfrombrowser option was set
+        call_args = mock_ytdl.call_args
+        opts = call_args[0][0]
+
+        assert "cookiesfrombrowser" in opts
+        assert opts["cookiesfrombrowser"] == ("firefox",)
+
+    @patch("yt_dlp.YoutubeDL")
+    def test_download_with_cookies_file(self, mock_ytdl, tmp_path):
+        """Test download uses cookies_file when configured."""
+        mock_instance = MagicMock()
+        mock_ytdl.return_value.__enter__.return_value = mock_instance
+
+        downloader = YoutubeDownloader(cookies_file="/path/to/cookies.txt")
+        downloader.download("https://youtube.com/watch?v=abc123", tmp_path, "test-trailer")
+
+        # Verify cookiefile option was set
+        call_args = mock_ytdl.call_args
+        opts = call_args[0][0]
+
+        assert "cookiefile" in opts
+        assert opts["cookiefile"] == "/path/to/cookies.txt"
+
+    @patch("yt_dlp.YoutubeDL")
+    def test_download_cookies_from_browser_takes_precedence(self, mock_ytdl, tmp_path):
+        """Test cookies_from_browser takes precedence over cookies_file."""
+        mock_instance = MagicMock()
+        mock_ytdl.return_value.__enter__.return_value = mock_instance
+
+        downloader = YoutubeDownloader(
+            cookies_from_browser="chrome", cookies_file="/path/to/cookies.txt"
+        )
+        downloader.download("https://youtube.com/watch?v=abc123", tmp_path, "test-trailer")
+
+        # Verify only cookiesfrombrowser was set
+        call_args = mock_ytdl.call_args
+        opts = call_args[0][0]
+
+        assert "cookiesfrombrowser" in opts
+        assert opts["cookiesfrombrowser"] == ("chrome",)
+        assert "cookiefile" not in opts
 
 
 class TestYoutubeDownloaderMovieTrailers:

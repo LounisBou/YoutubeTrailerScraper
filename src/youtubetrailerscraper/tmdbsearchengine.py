@@ -32,6 +32,7 @@ from typing import Any, Optional
 from urllib.parse import urljoin
 
 import requests
+from pymate import CacheIt
 
 
 class TMDBSearchEngine:
@@ -254,6 +255,7 @@ class TMDBSearchEngine:
 
         return tv_id, videos
 
+    @CacheIt(max_duration=86400, backend="diskcache")  # 24 hour cache
     def search_movie(self, title: str, year: Optional[int] = None) -> list[str]:
         """Search for movie trailers on TMDB with multi-language fallback.
 
@@ -292,6 +294,7 @@ class TMDBSearchEngine:
         except requests.exceptions.RequestException:
             return []
 
+    @CacheIt(max_duration=86400, backend="diskcache")  # 24 hour cache
     def search_tv_show(self, title: str, year: Optional[int] = None) -> list[str]:
         """Search for TV show trailers on TMDB with multi-language fallback.
 
