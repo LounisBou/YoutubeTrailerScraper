@@ -150,3 +150,143 @@ def test_search_for_movie_trailer(mocker):
         assert result == ["https://www.youtube.com/watch?v=test123"]
     finally:
         os.unlink(env_file)
+
+
+def test_download_trailers_for_movies(mocker, tmp_path):
+    """Test the download_trailers_for_movies method."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+
+        # Mock the YoutubeDownloader.download_trailers_for_movie method
+        movie1 = tmp_path / "Movie1 (2020)"
+        movie2 = tmp_path / "Movie2 (2021)"
+
+        mock_download = mocker.patch.object(
+            scraper.youtube_downloader,
+            "download_trailers_for_movie",
+            side_effect=[
+                [movie1 / "Movie1 (2020) - trailer #1 -trailer.mp4"],
+                [movie2 / "Movie2 (2021) - trailer #1 -trailer.mp4"],
+            ],
+        )
+
+        # Test data
+        trailer_results = {
+            movie1: ["https://youtube.com/watch?v=abc123"],
+            movie2: ["https://youtube.com/watch?v=def456"],
+        }
+
+        # Call the method
+        result = scraper.download_trailers_for_movies(trailer_results)
+
+        # Verify download method was called for each movie
+        assert mock_download.call_count == 2
+
+        # Verify results
+        assert len(result) == 2
+        assert len(result[movie1]) == 1
+        assert len(result[movie2]) == 1
+    finally:
+        os.unlink(env_file)
+
+
+def test_download_trailers_for_movies_empty_urls(tmp_path):
+    """Test download_trailers_for_movies with empty URL lists."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+
+        movie1 = tmp_path / "Movie1 (2020)"
+        trailer_results = {movie1: []}
+
+        result = scraper.download_trailers_for_movies(trailer_results)
+
+        # Should return empty list for movies with no URLs
+        assert result[movie1] == []
+    finally:
+        os.unlink(env_file)
+
+
+def test_download_trailers_for_tvshows(mocker, tmp_path):
+    """Test the download_trailers_for_tvshows method."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+
+        # Mock the YoutubeDownloader.download_trailers_for_tvshow method
+        tvshow1 = tmp_path / "Show1"
+        tvshow2 = tmp_path / "Show2"
+
+        mock_download = mocker.patch.object(
+            scraper.youtube_downloader,
+            "download_trailers_for_tvshow",
+            side_effect=[
+                [tvshow1 / "trailers" / "trailer #1.mp4"],
+                [tvshow2 / "trailers" / "trailer #1.mp4"],
+            ],
+        )
+
+        # Test data
+        trailer_results = {
+            tvshow1: ["https://youtube.com/watch?v=abc123"],
+            tvshow2: ["https://youtube.com/watch?v=def456"],
+        }
+
+        # Call the method
+        result = scraper.download_trailers_for_tvshows(trailer_results)
+
+        # Verify download method was called for each TV show
+        assert mock_download.call_count == 2
+
+        # Verify results
+        assert len(result) == 2
+        assert len(result[tvshow1]) == 1
+        assert len(result[tvshow2]) == 1
+    finally:
+        os.unlink(env_file)
+
+
+def test_download_trailers_for_tvshows_empty_urls(tmp_path):
+    """Test download_trailers_for_tvshows with empty URL lists."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+        f.write("TMDB_API_KEY=test_api_key\n")
+        f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
+        f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
+        f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write('TMDB_LANGUAGES=["en-US"]\n')
+        env_file = f.name
+
+    try:
+        scraper = YoutubeTrailerScraper(env_file=env_file)
+
+        tvshow1 = tmp_path / "Show1"
+        trailer_results = {tvshow1: []}
+
+        result = scraper.download_trailers_for_tvshows(trailer_results)
+
+        # Should return empty list for TV shows with no URLs
+        assert result[tvshow1] == []
+    finally:
+        os.unlink(env_file)

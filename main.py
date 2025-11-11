@@ -78,13 +78,12 @@ def _load_scraper(verbose: bool, use_smb: bool, logger: LogIt | None = None):
     Raises:
         SystemExit: If configuration loading fails (exits with code 2).
     """
+    # Set up logger for the scraper using PyMate's LogIt
+    if logger is None:
+        log_level = logging.DEBUG if verbose else logging.INFO
+        logger = LogIt(name="youtubetrailerscraper", level=log_level, console=True, file=False)
+
     try:
-
-        # Set up logger for the scraper using PyMate's LogIt
-        if logger is None:
-            log_level = logging.DEBUG if verbose else logging.INFO
-            logger = LogIt(name="youtubetrailerscraper", level=log_level, console=True, file=False)
-
         logger.info("Loading environment configuration...")
 
         # Create scraper with logger
@@ -255,6 +254,84 @@ def _search_tvshows_on_tmdb(scraper, tvshows_without_trailers, verbose: bool, lo
     return tvshow_results, tvshows_found
 
 
+def _display_media_download_results(media_type: str, results: dict, verbose: bool, logger: LogIt):
+    """Display download results for movies or TV shows.
+
+    Args:
+        media_type: Type of media ("Movie" or "TV Show").
+        results: Dictionary mapping media paths to downloaded file paths.
+        verbose: If True, show full file paths in output.
+        logger: Logger instance for logging messages.
+
+    Returns:
+        Number of items downloaded successfully.
+    """
+    logger.info(f"\n{'-' * 44}")
+    logger.info(f"{media_type} Download Results:")
+    logger.info(f"{'-' * 44}")
+
+    for media_path, downloaded_paths in results.items():
+        media_name = media_path.name if hasattr(media_path, "name") else str(media_path)
+        if downloaded_paths:
+            logger.success(f"✓ {media_name} - {len(downloaded_paths)} trailer(s) downloaded")
+            if verbose:
+                for path in downloaded_paths:
+                    logger.info(f"    → {path}")
+        else:
+            logger.warning(f"✗ {media_name} - Download failed or skipped")
+
+    items_downloaded = sum(1 for paths in results.values() if paths)
+    return items_downloaded
+
+
+def _download_and_display_trailers(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    scraper,
+    movie_results: dict,
+    tvshow_results: dict,
+    total_found: int,
+    verbose: bool,
+    logger: LogIt,
+):
+    """Download trailers and display results.
+
+    Args:
+        scraper: YoutubeTrailerScraper instance.
+        movie_results: Dictionary mapping movie paths to YouTube URLs.
+        tvshow_results: Dictionary mapping TV show paths to YouTube URLs.
+        total_found: Total number of items with trailers found.
+        verbose: If True, show full file paths in output.
+        logger: Logger instance for logging messages.
+    """
+    logger.info(f"\n{'=' * 60}")
+    logger.info("Downloading Trailers")
+    logger.info(f"{'=' * 60}\n")
+
+    movies_downloaded = 0
+    tvshows_downloaded = 0
+
+    # Download movie trailers
+    if movie_results:
+        movie_downloads = scraper.download_trailers_for_movies(movie_results)
+        movies_downloaded = _display_media_download_results(
+            "Movie", movie_downloads, verbose, logger
+        )
+        logger.info(f"\n  Movies: {movies_downloaded}/{len(movie_results)} downloaded")
+
+    # Download TV show trailers
+    if tvshow_results:
+        tvshow_downloads = scraper.download_trailers_for_tvshows(tvshow_results)
+        tvshows_downloaded = _display_media_download_results(
+            "TV Show", tvshow_downloads, verbose, logger
+        )
+        logger.info(f"\n  TV Shows: {tvshows_downloaded}/{len(tvshow_results)} downloaded")
+
+    # Overall download summary
+    total_downloads = movies_downloaded + tvshows_downloaded
+    logger.info(f"\n{'=' * 60}")
+    logger.info(f"Download Summary: {total_downloads}/{total_found} items downloaded")
+    logger.info(f"{'=' * 60}")
+
+
 def _search_and_display_tmdb_results(
     scraper,
     movies_without_trailers,
@@ -270,6 +347,10 @@ def _search_and_display_tmdb_results(
         tvshows_without_trailers: List of TV show directories without trailers.
         verbose: If True, show full URLs in output.
         logger: Logger instance for logging messages.
+
+    Returns:
+        Tuple of (movie_results, tvshow_results, total_found) where movie_results
+        and tvshow_results are dictionaries mapping paths to YouTube URLs.
     """
     if logger is None:
         log_level = logging.DEBUG if verbose else logging.INFO
@@ -280,18 +361,24 @@ def _search_and_display_tmdb_results(
     logger.info(f"{'=' * 60}\n")
 
     # Search for movie trailers
-    _, movies_found = _search_movies_on_tmdb(scraper, movies_without_trailers, verbose, logger)
+    movie_results, movies_found = _search_movies_on_tmdb(
+        scraper, movies_without_trailers, verbose, logger
+    )
 
     # Search for TV show trailers
-    _, tvshows_found = _search_tvshows_on_tmdb(scraper, tvshows_without_trailers, verbose, logger)
+    tvshow_results, tvshows_found = _search_tvshows_on_tmdb(
+        scraper, tvshows_without_trailers, verbose, logger
+    )
 
-    # Overall summary
+    # Overall search summary
     total_searched = len(movies_without_trailers) + len(tvshows_without_trailers)
     total_found = movies_found + tvshows_found
 
     logger.info(f"\n{'=' * 60}")
     logger.info(f"TMDB Search Summary: {total_found}/{total_searched} items found trailers")
     logger.info(f"{'=' * 60}")
+
+    return movie_results, tvshow_results, total_found
 
 
 def _main() -> int:
@@ -351,13 +438,21 @@ def _main() -> int:
 
         # Automatically search TMDB for trailers if there are missing trailers (Step 4a)
         if movies_without_trailers or tvshows_without_trailers:
-            _search_and_display_tmdb_results(
+            movie_results, tvshow_results, total_found = _search_and_display_tmdb_results(
                 scraper,
                 movies_without_trailers,
                 tvshows_without_trailers,
                 args.verbose,
                 logger=logger,
             )
+
+            # Download trailers if any were found
+            if movie_results or tvshow_results:
+                _download_and_display_trailers(
+                    scraper, movie_results, tvshow_results, total_found, args.verbose, logger
+                )
+            else:
+                logger.info("\nNo trailers found to download.")
 
     except Exception as e:  # pylint: disable=broad-except
         logger.error(f"An error occurred: {e}")

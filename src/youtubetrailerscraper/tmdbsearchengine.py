@@ -183,25 +183,17 @@ class TMDBSearchEngine:
         if year:
             search_params["year"] = year
 
-        print("\n\n----------------------------")  # Debug print
-        print(f"Searching TMDB for movie: search_params={search_params}")  # Debug print
-
         search_results = self._make_request("/search/movie", search_params)
         results = search_results.get("results", [])
-
-        print(f"TMDB search results: {results}")  # Debug print
-        print("----------------------------\n\n")  # Debug print
 
         # If no results with original title, try with normalized title
         if not results:
             normalized_title = self._normalize_title(title)
             # Only retry if normalized title is different from original
             if normalized_title != title:
-                print(f"Retrying with normalized title: '{normalized_title}'")  # Debug print
                 search_params["query"] = normalized_title
                 search_results = self._make_request("/search/movie", search_params)
                 results = search_results.get("results", [])
-                print(f"Normalized search results: {results}")  # Debug print
 
         if not results:
             return None, []
@@ -292,7 +284,6 @@ class TMDBSearchEngine:
                 if movie_id and videos:
                     youtube_urls = self._extract_youtube_urls(videos)
                     if youtube_urls:
-                        print(f"✓ Found trailers with language: {language}")  # Debug print
                         return youtube_urls
 
             # No results found with any language
@@ -331,7 +322,6 @@ class TMDBSearchEngine:
                 if tv_id and videos:
                     youtube_urls = self._extract_youtube_urls(videos)
                     if youtube_urls:
-                        print(f"✓ Found trailers with language: {language}")  # Debug print
                         return youtube_urls
 
             # No results found with any language
