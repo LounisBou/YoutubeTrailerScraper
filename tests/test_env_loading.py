@@ -20,6 +20,7 @@ def test_env_loading_with_valid_file():
         f.write("TMDB_API_BASE_URL=https://api.themoviedb.org/3\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write("USE_SMB_MOUNT=false\n")  # Explicitly disable SMB mount
         env_file = f.name
 
     try:
@@ -67,6 +68,8 @@ def test_env_loading_with_defaults():
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
         f.write('TVSHOWS_PATHS=["/path/to/tvshows/"]\n')
+        f.write("USE_SMB_MOUNT=false\n")  # Explicitly disable SMB mount
+        f.write("SMB_MOUNT_POINT=\n")  # Explicitly set empty SMB mount point
         env_file = f.name
 
     try:

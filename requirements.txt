@@ -7,6 +7,7 @@ git+https://github.com/lounisbou/PyMate.git  # Caching and utility decorators
 # Test / Dev tools (optional for CI)
 pytest
 pytest-cov
+pytest-mock
 black
 isort
 mypy

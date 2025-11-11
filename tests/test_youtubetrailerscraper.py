@@ -86,10 +86,11 @@ def test_scan_for_tvshows_with_sample_mode(tmp_path):
         f.write("TMDB_API_KEY=test_api_key\n")
         f.write("TMDB_READ_ACCESS_TOKEN=test_token\n")
         f.write('MOVIES_PATHS=["/path/to/movies/"]\n')
-        f.write(f'TVSHOWS_PATHS=["{str(tmp_path)}/"]\n')
+        f.write(f'TVSHOWS_PATHS=["{tmp_path}/"]\n')
         f.write('TMDB_LANGUAGES=["en-US"]\n')
         f.write("SCAN_SAMPLE_SIZE=3\n")
         f.write("USE_SMB_MOUNT=false\n")  # Disable SMB mount
+        f.write("TVSHOWS_SEASON_SUBDIR_PATTERN=Season {season_number}\n")  # Match test data
         env_file = f.name
 
     try:
