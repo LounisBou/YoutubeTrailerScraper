@@ -69,6 +69,8 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         self.youtube_search_url: str = ""
         self.default_search_query_format: str = ""
         self.scan_sample_size: int | None = None
+        self.youtube_cookies_from_browser: str = ""
+        self.youtube_cookies_file: str = ""
 
         # Set up logger
         self.logger = logger or logging.getLogger(__name__)
@@ -76,7 +78,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             # Add NullHandler to prevent "No handler found" warnings
             self.logger.addHandler(logging.NullHandler())
 
-        # Load environment variables
+        # Load environment variables first
         self._load_environment_variables(env_file)
 
         # Initialize TMDB search engine
@@ -85,9 +87,6 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             base_url=self.tmdb_api_base_url,
             languages=self.tmdb_languages,
         )
-
-        # Initialize YouTube downloader
-        self.youtube_downloader = YoutubeDownloader(logger=self.logger)
 
     def _load_environment_variables(self, env_file: Optional[str] = None) -> None:
         """
@@ -190,6 +189,31 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         # pylint: disable=logging-fstring-interpolation
         # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
         self.logger.debug(f"TV show season pattern set to: {self.tvshow_season_pattern}")
+
+        # Load YouTube cookie configuration for bypassing bot detection
+        self.youtube_cookies_from_browser = self._get_env_var(
+            "YOUTUBE_COOKIES_FROM_BROWSER", default=""
+        )
+        self.youtube_cookies_file = self._get_env_var("YOUTUBE_COOKIES_FILE", default="")
+
+        # Initialize YouTube downloader with cookie configuration
+        self.youtube_downloader = YoutubeDownloader(
+            logger=self.logger,
+            cookies_from_browser=self.youtube_cookies_from_browser or None,
+            cookies_file=self.youtube_cookies_file or None,
+        )
+
+        if self.youtube_cookies_from_browser:
+            # pylint: disable=logging-fstring-interpolation
+            self.logger.debug(
+                f"YouTube downloader configured with cookies from:"
+                f" {self.youtube_cookies_from_browser}"
+            )
+        elif self.youtube_cookies_file:
+            # pylint: disable=logging-fstring-interpolation
+            self.logger.debug(
+                f"YouTube downloader configured with cookies file:" f" {self.youtube_cookies_file}"
+            )
 
     def _get_env_var(self, key: str, required: bool = False, default: str = "") -> str:
         """
