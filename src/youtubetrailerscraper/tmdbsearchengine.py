@@ -143,7 +143,7 @@ class TMDBSearchEngine:
                     raise
                 time.sleep(self.retry_delay)
 
-        return {}  # Should never reach here due to raise above
+        return {}  # pragma: no cover - Should never reach here due to raise above
 
     def _extract_youtube_urls(self, videos: list[dict]) -> list[str]:
         """Extract YouTube URLs from TMDB video results.

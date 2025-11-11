@@ -306,6 +306,38 @@ class TestTMDBSearchEngineSearchMovie:
             result = engine.search_movie("Inception")
             assert not result
 
+    def test_search_movie_uses_normalized_title_fallback(self):
+        """Test that normalized title is used as fallback when original search fails."""
+        engine = TMDBSearchEngine(api_key="test_key")
+
+        with patch.object(engine, "_make_request") as mock_request:
+            # First call (original title) returns no results
+            # Second call (normalized title) returns results
+            mock_request.side_effect = [
+                {"results": []},  # Original search fails
+                {"results": [{"id": 123}]},  # Normalized search succeeds
+                {
+                    "results": [
+                        {"site": "YouTube", "type": "Trailer", "key": "abc123"},
+                    ]
+                },
+            ]
+            result = engine.search_movie("Astérix & Obélix")
+            assert len(result) == 1
+            assert "youtube.com/watch?v=abc123" in result[0]
+
+    def test_search_movie_normalized_title_same_as_original(self):
+        """Test that no retry happens if normalized title equals original."""
+        engine = TMDBSearchEngine(api_key="test_key")
+
+        with patch.object(engine, "_make_request") as mock_request:
+            # Only one call should be made since "Inception" doesn't need normalization
+            mock_request.return_value = {"results": []}
+            result = engine.search_movie("Inception")
+            assert not result
+            # Should only call once (no retry with normalized title)
+            assert mock_request.call_count == 1
+
 
 class TestTMDBSearchEngineSearchTVShow:
     """Test TMDBSearchEngine.search_tv_show method."""
@@ -391,6 +423,38 @@ class TestTMDBSearchEngineSearchTVShow:
             mock_request.return_value = {"results": [{"name": "Breaking Bad"}]}  # No id
             result = engine.search_tv_show("Breaking Bad")
             assert not result
+
+    def test_search_tv_show_uses_normalized_title_fallback(self):
+        """Test that normalized title is used as fallback when original search fails."""
+        engine = TMDBSearchEngine(api_key="test_key")
+
+        with patch.object(engine, "_make_request") as mock_request:
+            # First call (original title) returns no results
+            # Second call (normalized title) returns results
+            mock_request.side_effect = [
+                {"results": []},  # Original search fails
+                {"results": [{"id": 789}]},  # Normalized search succeeds
+                {
+                    "results": [
+                        {"site": "YouTube", "type": "Trailer", "key": "xyz789"},
+                    ]
+                },
+            ]
+            result = engine.search_tv_show("À l'aube de l'Amérique")
+            assert len(result) == 1
+            assert "youtube.com/watch?v=xyz789" in result[0]
+
+    def test_search_tv_show_normalized_title_same_as_original(self):
+        """Test that no retry happens if normalized title equals original."""
+        engine = TMDBSearchEngine(api_key="test_key")
+
+        with patch.object(engine, "_make_request") as mock_request:
+            # Only one call should be made since "Breaking Bad" doesn't need normalization
+            mock_request.return_value = {"results": []}
+            result = engine.search_tv_show("Breaking Bad")
+            assert not result
+            # Should only call once (no retry with normalized title)
+            assert mock_request.call_count == 1
 
     def test_search_tv_show_multiple_trailers(self):
         """Test TV show with multiple trailers."""
