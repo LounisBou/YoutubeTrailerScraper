@@ -103,7 +103,7 @@ class YoutubeDownloader:
                 "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/"
                 "best[ext=mp4][height<=1080]/best"
             ),
-            "outtmpl": str(output_path.with_suffix("")),  # yt-dlp adds extension
+            "outtmpl": str(output_path),  # Include .mp4 extension in output path
             "quiet": True,
             "no_warnings": True,
             "merge_output_format": "mp4",

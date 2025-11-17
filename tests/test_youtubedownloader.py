@@ -128,6 +128,15 @@ class TestYoutubeDownloaderDownload:
         assert opts["merge_output_format"] == "mp4"
         assert opts["quiet"] is True
 
+        # CRITICAL: Verify output path includes .mp4 extension
+        assert "outtmpl" in opts
+        assert opts["outtmpl"].endswith(
+            ".mp4"
+        ), f"Output template must end with .mp4, got: {opts['outtmpl']}"
+        assert (
+            "test-trailer.mp4" in opts["outtmpl"]
+        ), f"Output template must include 'test-trailer.mp4', got: {opts['outtmpl']}"
+
     @patch("yt_dlp.YoutubeDL")
     def test_download_with_cookies_from_browser(self, mock_ytdl, tmp_path):
         """Test download uses cookies_from_browser when configured."""
