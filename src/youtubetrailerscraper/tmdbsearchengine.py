@@ -32,7 +32,7 @@ from typing import Any, Optional
 from urllib.parse import urljoin
 
 import requests
-from pymate import CacheIt
+from pydevmate import CacheIt
 
 
 class TMDBSearchEngine:

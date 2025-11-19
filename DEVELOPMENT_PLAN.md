@@ -442,8 +442,8 @@ src/youtubetrailerscraper/
 
 ## Engineering Improvement Ideas
 
-1. **Document PyMate as a core dependency**  
-   - Add `pymate` (and the `diskcache` backend it relies on) to `pyproject.toml`/`requirements.txt` with pinned versions.  
+1. **Document PyDevMate as a core dependency**  
+   - Add `pydevmate` (and the `diskcache` backend it relies on) to `pyproject.toml`/`requirements.txt` with pinned versions.  
    - Call out the dependency explicitly in `README.md` and `.env.example` so downstream consumers know they must install it before running the CLI.
 
 2. **Add a `--env-file` CLI switch**  

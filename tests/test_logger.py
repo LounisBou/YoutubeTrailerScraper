@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tests for PyMate LogIt integration."""
+"""Tests for PyDevMate LogIt integration."""
 
 import logging
 
-from pymate.logit import LogIt
+from pydevmate.logit import LogIt
 
 
 class TestLogItIntegration:
-    """Tests for PyMate LogIt integration in YoutubeTrailerScraper."""
+    """Tests for PyDevMate LogIt integration in YoutubeTrailerScraper."""
 
     def test_logit_initialization(self):
         """Test LogIt initializes correctly."""
@@ -41,9 +41,9 @@ class TestLogItIntegration:
         assert hasattr(logger, "error")
         assert hasattr(logger, "critical")
 
-    def test_logit_has_pymate_methods(self):
-        """Test LogIt has PyMate-specific methods."""
-        logger = LogIt(name="test_pymate", level=logging.INFO)
+    def test_logit_has_pydevmate_methods(self):
+        """Test LogIt has PyDevMate-specific methods."""
+        logger = LogIt(name="test_pydevmate", level=logging.INFO)
         assert hasattr(logger, "success")
         assert hasattr(logger, "show")
         assert hasattr(logger, "separator")
@@ -55,7 +55,7 @@ class TestLogItIntegration:
         logger.debug("Debug test message")
 
         captured = capsys.readouterr()
-        # PyMate LogIt outputs to stderr by default
+        # PyDevMate LogIt outputs to stderr by default
         assert "Debug test message" in captured.err
 
     def test_logit_info_message(self, capsys):
@@ -64,7 +64,7 @@ class TestLogItIntegration:
         logger.info("Info test message")
 
         captured = capsys.readouterr()
-        # PyMate LogIt outputs to stderr by default
+        # PyDevMate LogIt outputs to stderr by default
         assert "Info test message" in captured.err
 
     def test_logit_warning_message(self, capsys):
@@ -73,7 +73,7 @@ class TestLogItIntegration:
         logger.warning("Warning test message")
 
         captured = capsys.readouterr()
-        # PyMate LogIt outputs to stderr by default
+        # PyDevMate LogIt outputs to stderr by default
         assert "Warning test message" in captured.err
 
     def test_logit_error_message(self, capsys):
@@ -82,16 +82,16 @@ class TestLogItIntegration:
         logger.error("Error test message")
 
         captured = capsys.readouterr()
-        # PyMate LogIt outputs to stderr by default
+        # PyDevMate LogIt outputs to stderr by default
         assert "Error test message" in captured.err
 
     def test_logit_success_message(self, capsys):
-        """Test LogIt outputs success messages (PyMate-specific)."""
+        """Test LogIt outputs success messages (PyDevMate-specific)."""
         logger = LogIt(name="test_success_msg", level=logging.INFO, console=True)
         logger.success("Success test message")
 
         captured = capsys.readouterr()
-        # PyMate LogIt outputs to stderr by default
+        # PyDevMate LogIt outputs to stderr by default
         assert "Success test message" in captured.err
 
     def test_logit_verbose_mode_simulation(self):
