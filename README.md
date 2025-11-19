@@ -215,7 +215,7 @@ See `CLAUDE.md` for detailed development instructions.
 - yt-dlp
 - requests
 - python-dotenv
-- [PyMate](https://github.com/lounisbou/PyMate) (pulled automatically via pip; provides the `CacheIt` decorator backed by diskcache and the LogIt logger)
+- [PyDevMate](https://github.com/lounisbou/PyDevMate) (pulled automatically via pip; provides the `CacheIt` decorator backed by diskcache and the LogIt logger)
 
 ## License
 
