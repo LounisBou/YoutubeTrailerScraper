@@ -8,7 +8,7 @@ PyDevMate>=0.0.2            # Caching and utility decorators
 pytest
 pytest-cov
 pytest-mock
-black
+black==25.1.0
 isort
 mypy
 pylint
