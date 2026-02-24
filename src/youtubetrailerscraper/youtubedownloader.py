@@ -92,21 +92,26 @@ class YoutubeDownloader:
         # Full output path with .mp4 extension
         output_path = output_dir / f"{output_filename}.mp4"
 
-        # Skip if file already exists
+        # Skip if file already exists and is not empty
         if output_path.exists():
-            self.logger.info(f"File already exists, skipping: {output_path}")
-            return output_path
+            if output_path.stat().st_size > 0:
+                self.logger.info(f"File already exists, skipping: {output_path}")
+                return output_path
+            # Remove empty file from a previous failed download
+            output_path.unlink()
+            self.logger.info(f"Removed empty file from previous failed download: {output_path}")
 
         # Configure yt-dlp options
         ydl_opts = {
             "format": (
-                "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/"
-                "best[ext=mp4][height<=1080]/best"
+                "bestvideo[height<=1080]+bestaudio/"
+                "best[height<=1080]/best"
             ),
             "outtmpl": str(output_path),  # Include .mp4 extension in output path
             "quiet": True,
             "no_warnings": True,
             "merge_output_format": "mp4",
+            "remote_components": {"ejs:github"},
         }
 
         # Add cookie support to bypass YouTube bot detection
@@ -121,9 +126,17 @@ class YoutubeDownloader:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 self.logger.info(f"Downloading: {url} -> {output_path}")
                 ydl.download([url])
+            # Remove empty files left by failed downloads
+            if output_path.exists() and output_path.stat().st_size == 0:
+                output_path.unlink()
+                self.logger.error(f"ERROR: The downloaded file is empty")
+                raise Exception("ERROR: The downloaded file is empty")
             self.logger.info(f"Successfully downloaded: {output_path}")
             return output_path
         except Exception as e:  # pylint: disable=broad-except
+            # Clean up any empty/partial file on failure
+            if output_path.exists() and output_path.stat().st_size == 0:
+                output_path.unlink()
             self.logger.error(f"Failed to download {url}: {e}")
             return None
 

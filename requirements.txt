@@ -1,5 +1,5 @@
 # Runtime dependencies
-yt-dlp>=2024.10.0           # YouTube video downloader
+yt-dlp>=2025.10.0           # YouTube video downloader
 requests>=2.31.0            # HTTP client for TMDB API calls
 python-dotenv>=1.0.0        # Load environment variables from .env file
 git+https://github.com/lounisbou/PyMate.git  # Caching and utility decorators

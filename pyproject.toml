@@ -35,7 +35,7 @@ classifiers = [
   "Operating System :: OS Independent",
 ]
 dependencies = [
-  "yt-dlp>=2024.10.0",
+  "yt-dlp>=2025.10.0",
   "requests>=2.31.0",
   "python-dotenv>=1.0.0",
   "pymate @ git+https://github.com/lounisbou/PyMate.git",
