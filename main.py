@@ -14,7 +14,7 @@ import logging
 import sys
 import traceback
 
-from pymate.logit import LogIt
+from pydevmate.logit import LogIt
 
 from commandlinehelper import (
     check_args,
@@ -78,7 +78,7 @@ def _load_scraper(verbose: bool, use_smb: bool, logger: LogIt | None = None):
     Raises:
         SystemExit: If configuration loading fails (exits with code 2).
     """
-    # Set up logger for the scraper using PyMate's LogIt
+    # Set up logger for the scraper using PyDevMate's LogIt
     if logger is None:
         log_level = logging.DEBUG if verbose else logging.INFO
         logger = LogIt(name="youtubetrailerscraper", level=log_level, console=True, file=False)
@@ -396,7 +396,7 @@ def _main() -> int:
     # Parse and validate arguments
     args = _parse_and_validate_args()
 
-    # Set up logger for the scraper using PyMate's LogIt
+    # Set up logger for the scraper using PyDevMate's LogIt
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logger = LogIt(
         name="youtubetrailerscraper",

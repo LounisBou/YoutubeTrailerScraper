@@ -27,7 +27,7 @@ import logging
 from pathlib import Path
 from typing import List
 
-from pymate import CacheIt
+from pydevmate import CacheIt
 
 logger = logging.getLogger(__name__)
 

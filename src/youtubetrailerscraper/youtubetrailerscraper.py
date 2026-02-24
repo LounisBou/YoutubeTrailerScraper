@@ -142,7 +142,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         # Apply SMB mount point prefix if enabled
         if self.use_smb_mount and self.smb_mount_point:
             # pylint: disable=logging-fstring-interpolation
-            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
             self.logger.debug(f"Applying SMB mount prefix: {self.smb_mount_point}")
             self.movies_paths = self._apply_smb_prefix(movies_paths_raw)
             self.tvshows_paths = self._apply_smb_prefix(tvshows_paths_raw)
@@ -151,7 +151,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             self.tvshows_paths = tvshows_paths_raw
 
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.debug(f"Loaded {len(self.movies_paths)} movie paths")
         self.logger.debug(f"Loaded {len(self.tvshows_paths)} TV show paths")
 
@@ -170,11 +170,11 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             try:
                 self.scan_sample_size = int(scan_sample_str)
                 # pylint: disable=logging-fstring-interpolation
-                # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+                # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
                 self.logger.debug(f"Scan sample size set to: {self.scan_sample_size}")
             except ValueError:
                 # pylint: disable=logging-fstring-interpolation
-                # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+                # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
                 self.logger.warning(
                     f"Invalid SCAN_SAMPLE_SIZE value '{scan_sample_str}', ignoring"
                 )
@@ -187,7 +187,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         # Extract prefix before {season_number} (e.g., "Saison" from "Saison {season_number}")
         self.tvshow_season_pattern = season_pattern_raw.split("{")[0].strip()
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.debug(f"TV show season pattern set to: {self.tvshow_season_pattern}")
 
         # Load YouTube cookie configuration for bypassing bot detection
@@ -346,7 +346,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         sample_size = self.scan_sample_size if use_sample and self.scan_sample_size else 0
 
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.debug(f"Scanning {len(self.movies_paths)} movie directories...")
         for path in self.movies_paths:
             self.logger.debug(f"  - {path}")
@@ -389,7 +389,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         sample_size = self.scan_sample_size if use_sample and self.scan_sample_size else 0
 
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.debug(f"Scanning {len(self.tvshows_paths)} TV show directories...")
         for path in self.tvshows_paths:
             self.logger.debug(f"  - {path}")
@@ -498,20 +498,20 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             return []
 
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.debug(f"Searching TMDB for movie: {title} ({year})")
 
         youtube_urls = self.tmdb_search_engine.search_movie(title, year)
 
         if youtube_urls:
             # pylint: disable=logging-fstring-interpolation
-            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
             self.logger.info(f"Found {len(youtube_urls)} trailer(s) on TMDB for: {title}")
             for url in youtube_urls:
                 self.logger.debug(f"  - {url}")
         else:
             # pylint: disable=logging-fstring-interpolation
-            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
             self.logger.debug(f"No TMDB trailers found for: {title}")
 
         return youtube_urls
@@ -542,20 +542,20 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
             return []
 
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.debug(f"Searching TMDB for TV show: {title} ({year})")
 
         youtube_urls = self.tmdb_search_engine.search_tv_show(title, year)
 
         if youtube_urls:
             # pylint: disable=logging-fstring-interpolation
-            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
             self.logger.info(f"Found {len(youtube_urls)} trailer(s) on TMDB for: {title}")
             for url in youtube_urls:
                 self.logger.debug(f"  - {url}")
         else:
             # pylint: disable=logging-fstring-interpolation
-            # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+            # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
             self.logger.debug(f"No TMDB trailers found for: {title}")
 
         return youtube_urls
@@ -583,7 +583,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         results = {}
 
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.info(f"Searching TMDB for {len(movie_paths)} movies...")
 
         for movie_path in movie_paths:
@@ -599,7 +599,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         # Summary statistics
         found_count = sum(1 for urls in results.values() if urls)
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.info(
             f"TMDB search complete: {found_count}/{len(movie_paths)} movies have trailers"
         )
@@ -629,7 +629,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         results = {}
 
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.info(f"Searching TMDB for {len(tvshow_paths)} TV shows...")
 
         for tvshow_path in tvshow_paths:
@@ -645,7 +645,7 @@ class YoutubeTrailerScraper:  # pylint: disable=too-many-instance-attributes
         # Summary statistics
         found_count = sum(1 for urls in results.values() if urls)
         # pylint: disable=logging-fstring-interpolation
-        # LogIt from PyMate requires f-strings, doesn't support lazy % formatting
+        # LogIt from PyDevMate requires f-strings, doesn't support lazy % formatting
         self.logger.info(
             f"TMDB search complete: {found_count}/{len(tvshow_paths)} TV shows have trailers"
         )
