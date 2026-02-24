@@ -123,10 +123,7 @@ class YoutubeDownloader:
     def _build_ydl_opts(self, output_path: Path, use_cookies: bool = False) -> dict:
         """Build yt-dlp options dict, optionally including cookie config."""
         ydl_opts = {
-            "format": (
-                "bestvideo[height<=1080]+bestaudio/"
-                "best[height<=1080]/best"
-            ),
+            "format": ("bestvideo[height<=1080]+bestaudio/" "best[height<=1080]/best"),
             "outtmpl": str(output_path),
             "quiet": True,
             "no_warnings": True,
@@ -144,9 +141,7 @@ class YoutubeDownloader:
         """Check if any cookie source is configured."""
         return bool(self.cookies_from_browser or self.cookies_file)
 
-    def _attempt_download(
-        self, url: str, output_path: Path, ydl_opts: dict
-    ) -> Optional[Path]:
+    def _attempt_download(self, url: str, output_path: Path, ydl_opts: dict) -> Optional[Path]:
         """Attempt a single download. Returns path on success, None on failure."""
         self._last_error_needs_auth = False
         try:
