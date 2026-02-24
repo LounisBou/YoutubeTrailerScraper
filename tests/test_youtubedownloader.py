@@ -138,55 +138,91 @@ class TestYoutubeDownloaderDownload:
         ), f"Output template must include 'test-trailer.mp4', got: {opts['outtmpl']}"
 
     @patch("yt_dlp.YoutubeDL")
-    def test_download_with_cookies_from_browser(self, mock_ytdl, tmp_path):
-        """Test download uses cookies_from_browser when configured."""
+    def test_download_first_attempt_has_no_cookies(self, mock_ytdl, tmp_path):
+        """Test first download attempt does not include cookies."""
         mock_instance = MagicMock()
         mock_ytdl.return_value.__enter__.return_value = mock_instance
 
         downloader = YoutubeDownloader(cookies_from_browser="firefox")
         downloader.download("https://youtube.com/watch?v=abc123", tmp_path, "test-trailer")
 
-        # Verify cookiesfrombrowser option was set
-        call_args = mock_ytdl.call_args
-        opts = call_args[0][0]
-
-        assert "cookiesfrombrowser" in opts
-        assert opts["cookiesfrombrowser"] == ("firefox",)
+        # First call should NOT have cookies
+        first_call_opts = mock_ytdl.call_args_list[0][0][0]
+        assert "cookiesfrombrowser" not in first_call_opts
+        assert "cookiefile" not in first_call_opts
 
     @patch("yt_dlp.YoutubeDL")
-    def test_download_with_cookies_file(self, mock_ytdl, tmp_path):
-        """Test download uses cookies_file when configured."""
+    def test_download_retries_with_cookies_on_private_video(self, mock_ytdl, tmp_path):
+        """Test download retries with cookies when video is private."""
         mock_instance = MagicMock()
         mock_ytdl.return_value.__enter__.return_value = mock_instance
+        # First call raises private video error, second call succeeds
+        mock_instance.download.side_effect = [
+            Exception("Private video. Sign in if you've been granted access"),
+            None,
+        ]
+
+        downloader = YoutubeDownloader(cookies_from_browser="firefox")
+        downloader.download("https://youtube.com/watch?v=abc123", tmp_path, "test-trailer")
+
+        # Should have been called twice (first without cookies, then with)
+        assert mock_ytdl.call_count == 2
+        retry_opts = mock_ytdl.call_args_list[1][0][0]
+        assert "cookiesfrombrowser" in retry_opts
+        assert retry_opts["cookiesfrombrowser"] == ("firefox",)
+
+    @patch("yt_dlp.YoutubeDL")
+    def test_download_no_retry_on_non_auth_error(self, mock_ytdl, tmp_path):
+        """Test download does NOT retry with cookies for non-auth errors."""
+        mock_instance = MagicMock()
+        mock_ytdl.return_value.__enter__.return_value = mock_instance
+        mock_instance.download.side_effect = Exception("Video unavailable")
+
+        downloader = YoutubeDownloader(cookies_from_browser="firefox")
+        downloader.download("https://youtube.com/watch?v=abc123", tmp_path, "test-trailer")
+
+        # Should only be called once (no retry for non-auth errors)
+        assert mock_ytdl.call_count == 1
+
+    @patch("yt_dlp.YoutubeDL")
+    def test_download_cookies_file_used_on_retry(self, mock_ytdl, tmp_path):
+        """Test cookies_file is used on retry when cookies_from_browser is not set."""
+        mock_instance = MagicMock()
+        mock_ytdl.return_value.__enter__.return_value = mock_instance
+        mock_instance.download.side_effect = [
+            Exception("Private video. Sign in if you've been granted access"),
+            None,
+        ]
 
         downloader = YoutubeDownloader(cookies_file="/path/to/cookies.txt")
         downloader.download("https://youtube.com/watch?v=abc123", tmp_path, "test-trailer")
 
-        # Verify cookiefile option was set
-        call_args = mock_ytdl.call_args
-        opts = call_args[0][0]
-
-        assert "cookiefile" in opts
-        assert opts["cookiefile"] == "/path/to/cookies.txt"
+        assert mock_ytdl.call_count == 2
+        retry_opts = mock_ytdl.call_args_list[1][0][0]
+        assert "cookiefile" in retry_opts
+        assert retry_opts["cookiefile"] == "/path/to/cookies.txt"
+        assert "cookiesfrombrowser" not in retry_opts
 
     @patch("yt_dlp.YoutubeDL")
-    def test_download_cookies_from_browser_takes_precedence(self, mock_ytdl, tmp_path):
-        """Test cookies_from_browser takes precedence over cookies_file."""
+    def test_download_cookies_from_browser_takes_precedence_on_retry(self, mock_ytdl, tmp_path):
+        """Test cookies_from_browser takes precedence over cookies_file on retry."""
         mock_instance = MagicMock()
         mock_ytdl.return_value.__enter__.return_value = mock_instance
+        mock_instance.download.side_effect = [
+            Exception("Private video. Sign in if you've been granted access"),
+            None,
+        ]
 
         downloader = YoutubeDownloader(
             cookies_from_browser="chrome", cookies_file="/path/to/cookies.txt"
         )
         downloader.download("https://youtube.com/watch?v=abc123", tmp_path, "test-trailer")
 
-        # Verify only cookiesfrombrowser was set
-        call_args = mock_ytdl.call_args
-        opts = call_args[0][0]
-
-        assert "cookiesfrombrowser" in opts
-        assert opts["cookiesfrombrowser"] == ("chrome",)
-        assert "cookiefile" not in opts
+        assert mock_ytdl.call_count == 2
+        retry_opts = mock_ytdl.call_args_list[1][0][0]
+        assert "cookiesfrombrowser" in retry_opts
+        assert retry_opts["cookiesfrombrowser"] == ("chrome",)
+        assert "cookiefile" not in retry_opts
 
 
 class TestYoutubeDownloaderMovieTrailers:
