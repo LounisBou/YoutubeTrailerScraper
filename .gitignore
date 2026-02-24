@@ -29,6 +29,7 @@ htmlcov/
 
 # Cache
 .cache/
+__cacheit__/
 
 # Type checking
 .mypy_cache/
@@ -38,6 +39,7 @@ dmypy.json
 # IDEs and editors
 .vscode/
 .idea/
+.claude/
 *.sublime-project
 *.sublime-workspace
 
