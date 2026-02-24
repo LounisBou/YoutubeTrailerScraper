@@ -35,6 +35,9 @@ class YoutubeDownloader:
     # Maximum number of trailers to download per movie or TV show
     MAX_TRAILERS_PER_MEDIA = 3
 
+    # Error keywords that indicate authentication might help
+    _AUTH_ERROR_KEYWORDS = ("Private video", "Sign in")
+
     def __init__(
         self,
         logger: Optional[logging.Logger] = None,
@@ -92,38 +95,74 @@ class YoutubeDownloader:
         # Full output path with .mp4 extension
         output_path = output_dir / f"{output_filename}.mp4"
 
-        # Skip if file already exists
+        # Skip if file already exists and is not empty
         if output_path.exists():
-            self.logger.info(f"File already exists, skipping: {output_path}")
-            return output_path
+            if output_path.stat().st_size > 0:
+                self.logger.info(f"File already exists, skipping: {output_path}")
+                return output_path
+            # Remove empty file from a previous failed download
+            output_path.unlink()
+            self.logger.info(f"Removed empty file from previous failed download: {output_path}")
 
-        # Configure yt-dlp options
+        # First attempt: download without cookies
+        ydl_opts = self._build_ydl_opts(output_path, use_cookies=False)
+        result = self._attempt_download(url, output_path, ydl_opts)
+        if result is not None:
+            return result
+
+        # If first attempt failed with an auth error, retry with cookies
+        if self._last_error_needs_auth and self._has_cookies_configured():
+            self.logger.info(f"Private video detected, retrying with cookies for: {url}")
+            ydl_opts = self._build_ydl_opts(output_path, use_cookies=True)
+            result = self._attempt_download(url, output_path, ydl_opts)
+            if result is not None:
+                return result
+
+        return None
+
+    def _build_ydl_opts(self, output_path: Path, use_cookies: bool = False) -> dict:
+        """Build yt-dlp options dict, optionally including cookie config."""
         ydl_opts = {
-            "format": (
-                "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/"
-                "best[ext=mp4][height<=1080]/best"
-            ),
-            "outtmpl": str(output_path),  # Include .mp4 extension in output path
+            "format": ("bestvideo[height<=1080]+bestaudio/" "best[height<=1080]/best"),
+            "outtmpl": str(output_path),
             "quiet": True,
             "no_warnings": True,
             "merge_output_format": "mp4",
+            "remote_components": {"ejs:github"},
         }
+        if use_cookies:
+            if self.cookies_from_browser:
+                ydl_opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
+            elif self.cookies_file:
+                ydl_opts["cookiefile"] = self.cookies_file
+        return ydl_opts
 
-        # Add cookie support to bypass YouTube bot detection
-        if self.cookies_from_browser:
-            ydl_opts["cookiesfrombrowser"] = (self.cookies_from_browser,)
-            self.logger.debug(f"Using cookies from browser: {self.cookies_from_browser}")
-        elif self.cookies_file:
-            ydl_opts["cookiefile"] = self.cookies_file
-            self.logger.debug(f"Using cookies file: {self.cookies_file}")
+    def _has_cookies_configured(self) -> bool:
+        """Check if any cookie source is configured."""
+        return bool(self.cookies_from_browser or self.cookies_file)
 
+    def _attempt_download(self, url: str, output_path: Path, ydl_opts: dict) -> Optional[Path]:
+        """Attempt a single download. Returns path on success, None on failure."""
+        self._last_error_needs_auth = False
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 self.logger.info(f"Downloading: {url} -> {output_path}")
                 ydl.download([url])
+            # Remove empty files left by failed downloads
+            if output_path.exists() and output_path.stat().st_size == 0:
+                output_path.unlink()
+                self.logger.error("ERROR: The downloaded file is empty")
+                raise Exception("ERROR: The downloaded file is empty")
             self.logger.info(f"Successfully downloaded: {output_path}")
             return output_path
         except Exception as e:  # pylint: disable=broad-except
+            # Clean up any empty/partial file on failure
+            if output_path.exists() and output_path.stat().st_size == 0:
+                output_path.unlink()
+            error_msg = str(e)
+            self._last_error_needs_auth = any(
+                keyword in error_msg for keyword in self._AUTH_ERROR_KEYWORDS
+            )
             self.logger.error(f"Failed to download {url}: {e}")
             return None
 

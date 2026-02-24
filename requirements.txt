@@ -1,5 +1,5 @@
 # Runtime dependencies
-yt-dlp>=2024.10.0           # YouTube video downloader
+yt-dlp>=2025.10.0           # YouTube video downloader
 requests>=2.31.0            # HTTP client for TMDB API calls
 python-dotenv>=1.0.0        # Load environment variables from .env file
 PyDevMate>=0.0.2            # Caching and utility decorators
@@ -8,7 +8,7 @@ PyDevMate>=0.0.2            # Caching and utility decorators
 pytest
 pytest-cov
 pytest-mock
-black
+black==25.1.0
 isort
 mypy
 pylint

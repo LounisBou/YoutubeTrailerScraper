@@ -209,6 +209,33 @@ pylint src/youtubetrailerscraper/*.py --max-line-length=99
 
 See `CLAUDE.md` for detailed development instructions.
 
+## Fixing Existing Trailers Without .mp4 Extension
+
+If you have previously downloaded trailers that are missing the .mp4 extension due to the bug that was fixed, you can use the `fix_trailer_extensions.py` utility script to rename them:
+
+```bash
+# Preview changes (dry-run mode - recommended first step)
+python fix_trailer_extensions.py /path/to/movies --dry-run
+
+# Apply changes to a single directory
+python fix_trailer_extensions.py /path/to/movies
+
+# Apply changes to multiple directories
+python fix_trailer_extensions.py /movies/disk1 /movies/disk2 /movies/disk3
+
+# Verbose output for detailed logging
+python fix_trailer_extensions.py /path/to/movies --verbose
+```
+
+The script will:
+- Scan all movie directories for trailer files
+- Identify trailers missing the .mp4 extension
+- Rename them to add .mp4 extension
+- Skip files that already have .mp4 extension
+- Provide a summary of changes made
+
+**Always use `--dry-run` first** to preview the changes before applying them.
+
 ## Requirements
 
 - Python 3.9+
